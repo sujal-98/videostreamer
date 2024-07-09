@@ -1,0 +1,13 @@
+.body {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px; 
+    padding: 16px; 
+    margin-top: 2%;
+    margin-left: 4%;
+  }
+  
+  .card {
+    width: 100%; 
+  }
+  
