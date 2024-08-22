@@ -1,4 +1,6 @@
-import * as React from 'react';
+import React, { useEffect, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { setCurrentUser, logout } from '../actions/authAction';
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
 import Toolbar from '@mui/material/Toolbar';
@@ -13,36 +15,27 @@ import Tooltip from '@mui/material/Tooltip';
 import MenuItem from '@mui/material/MenuItem';
 import AdbIcon from '@mui/icons-material/Adb';
 import { useNavigate } from 'react-router-dom';
-import { GoogleLogin } from 'react-google-login';
+import TextField from '@mui/material/TextField';
 
-const pages = ['Products', 'Pricing', 'Blog'];
-const settings = ['Sign In', 'Account', 'Dashboard'];
+const settings = ['Account', 'Dashboard', 'Logout'];
 
 function Navbar() {
-  const [anchorElNav, setAnchorElNav] = React.useState(null);
-  const [anchorElUser, setAnchorElUser] = React.useState(null);
-  const navigate = useNavigate(); 
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  useEffect(() => {
+    console.log("useeffect working")
+    dispatch(setCurrentUser());
+}, []);
+const loading=false;
+  
+  const { user, isAuthenticated } = useSelector(state => state.auth);
+  console.log(user)
+  console.log(isAuthenticated, loading)
+  const [anchorElNav, setAnchorElNav] = useState(null);
+  const [anchorElUser, setAnchorElUser] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const id="283587882746-i2fs4ss8j53q8flc716ski3k6d9rrsbi.apps.googleusercontent.com";
-  const onSuccess = async (response) => {
-    console.log('Login Success:', response.profileObj);
-
-    const res = await fetch('http://localhost:5000/api/google-login', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ token: response.tokenId }),
-    });
-
-    const data = await res.json();
-    console.log('Server Response:', data);
-  };
-
-  const onFailure = (response) => {
-    console.log('Login Failed:', response);
-  };
-
+  
   const handleOpenNavMenu = (event) => {
     setAnchorElNav(event.currentTarget);
   };
@@ -59,6 +52,25 @@ function Navbar() {
     setAnchorElUser(null);
   };
 
+  const handleClick = (index) => {
+    if (index === 2) { // Logout index
+      dispatch(logout());
+    } else if (index === 0) { // Account index
+      navigate('/account');
+    } else if (index === 1) { // Dashboard index
+      navigate('/dashboard');
+    }
+  }
+
+  const handleSearchChange = (event) => {
+    setSearchQuery(event.target.value);
+  };
+
+  const handleSearchSubmit = (event) => {
+    event.preventDefault();
+    console.log('Search query:', searchQuery);
+  };
+
   return (
     <AppBar position="static">
       <Container maxWidth="xl">
@@ -68,7 +80,7 @@ function Navbar() {
             variant="h6"
             noWrap
             component="a"
-            href="#app-bar-with-responsive-menu"
+            href="/"
             sx={{
               mr: 2,
               display: { xs: 'none', md: 'flex' },
@@ -79,7 +91,7 @@ function Navbar() {
               textDecoration: 'none',
             }}
           >
-            LOGO
+            ProStreamer
           </Typography>
 
           <Box sx={{ flexGrow: 1, display: { xs: 'flex', md: 'none' } }}>
@@ -94,31 +106,24 @@ function Navbar() {
               <MenuIcon />
             </IconButton>
             <Menu
-  id="menu-appbar"
-  anchorEl={anchorElNav}
-  anchorOrigin={{
-    vertical: 'bottom',
-    horizontal: 'left',
-  }}
-  keepMounted
-  transformOrigin={{
-    vertical: 'top',
-    horizontal: 'left',
-  }}
-  open={Boolean(anchorElNav)}
-  sx={{
-    display: { xs: 'block', md: 'none' },
-  }}
-  onClose={handleCloseNavMenu}
->
-  {pages.map((page, index) => (
-    (
-        <Typography textAlign="center">{page}</Typography>
-      )))}
-    
-  
-</Menu>
-
+              id="menu-appbar"
+              anchorEl={anchorElNav}
+              anchorOrigin={{
+                vertical: 'bottom',
+                horizontal: 'left',
+              }}
+              keepMounted
+              transformOrigin={{
+                vertical: 'top',
+                horizontal: 'left',
+              }}
+              open={Boolean(anchorElNav)}
+              onClose={handleCloseNavMenu}
+              sx={{
+                display: { xs: 'block', md: 'none' },
+              }}
+            >
+            </Menu>
           </Box>
 
           <AdbIcon sx={{ display: { xs: 'flex', md: 'none' }, mr: 1 }} />
@@ -126,7 +131,7 @@ function Navbar() {
             variant="h5"
             noWrap
             component="a"
-            href="#app-bar-with-responsive-menu"
+            href="/"
             sx={{
               mr: 2,
               display: { xs: 'flex', md: 'none' },
@@ -138,52 +143,68 @@ function Navbar() {
               textDecoration: 'none',
             }}
           >
-            LOGO
+            ProStreamer
           </Typography>
-          <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' } }}>
-            {pages.map((page, index) => (
-              (index===0)?
-              {}
-            :
-              <Button
-                key={page}
-                onClick={() => handleCloseNavMenu(index)}
-                sx={{ my: 2, color: 'white', display: 'block' }}
-              >
-                {page}
+          <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center' }} >
+            <form onSubmit={handleSearchSubmit} style={{ display: 'flex', flexGrow: 1 }}>
+              <TextField
+                variant="outlined"
+                placeholder="Search..."
+                size="small"
+                value={searchQuery}
+                onChange={handleSearchChange}
+                sx={{
+                  width: '25rem',
+                  bgcolor: "white",
+                  borderRadius: "30px",
+                }}
+              />
+              <Button type="submit" variant="contained" color="primary" sx={{ ml: 1 }}>
+                Search
               </Button>
-            ))}
+            </form>
           </Box>
 
-          {/* User Menu */}
           <Box sx={{ flexGrow: 0 }}>
-            <Tooltip title="Open settings">
-              <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
-                <Avatar alt="Remy Sharp" src="/static/images/avatar/2.jpg" />
-              </IconButton>
-            </Tooltip>
-            <Menu
-              sx={{ mt: '45px' }}
-              id="menu-appbar"
-              anchorEl={anchorElUser}
-              anchorOrigin={{
-                vertical: 'top',
-                horizontal: 'right',
-              }}
-              keepMounted
-              transformOrigin={{
-                vertical: 'top',
-                horizontal: 'right',
-              }}
-              open={Boolean(anchorElUser)}
-              onClose={handleCloseUserMenu}
-            >
-              {settings.map((setting) => (
-                <MenuItem key={setting} onClick={handleCloseUserMenu}>
-                  <Typography textAlign="center">{setting}</Typography>
-                </MenuItem>
-              ))}
-            </Menu>
+            {isAuthenticated && !loading ? (
+              <>
+                <Tooltip title="Open settings">
+                  <IconButton onClick={handleOpenUserMenu} sx={{ p: 0,marginRight:'0.7rem' }}>
+                    <Avatar alt={user?.displayName} src={user?.photo} />
+                  </IconButton>
+                  
+                    {user?.displayName}
+                  
+                </Tooltip>
+                <Menu
+                  sx={{ mt: '45px' }}
+                  id="menu-appbar"
+                  anchorEl={anchorElUser}
+                  anchorOrigin={{
+                    vertical: 'top',
+                    horizontal: 'right',
+                  }}
+                  keepMounted
+                  transformOrigin={{
+                    vertical: 'top',
+                    horizontal: 'right',
+                  }}
+                  open={Boolean(anchorElUser)}
+                  onClose={handleCloseUserMenu}
+                >
+                
+                  {settings.map((setting, index) => (
+                    <MenuItem key={setting} onClick={() => handleClick(index)}>
+                      <Typography textAlign="center">{setting}</Typography>
+                    </MenuItem>
+                  ))}
+                </Menu>
+              </>
+            ) : (
+              <Button onClick={() => navigate('/login')} color="inherit">
+                Sign In
+              </Button>
+            )}
           </Box>
         </Toolbar>
       </Container>

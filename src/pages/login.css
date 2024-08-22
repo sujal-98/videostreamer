@@ -1,0 +1,37 @@
+
+  
+  .login-container {
+    background: #ffffff;
+    padding: 40px;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    text-align: center;
+  }
+  
+  h1 {
+    color: #333;
+    margin-bottom: 20px;
+  }
+  
+  .google-btn {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+  }
+  
+  .google-btn button {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: #4285f4;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+  
+  .google-btn button:hover {
+    background-color: #357ae8;
+  }
+  

@@ -10,9 +10,9 @@ import PrintIcon from '@mui/icons-material/Print';
 import ShareIcon from '@mui/icons-material/Share';
 
 const actions = [
-  { icon: <FileCopyIcon />, name: 'Copy' },
-  { icon: <SaveIcon />, name: 'Save' },
-  { icon: <PrintIcon />, name: 'Print' },
+  { icon: <FileCopyIcon />, name: 'Global' },
+  { icon: <SaveIcon />, name: 'Room' },
+  { icon: <PrintIcon />, name: 'Join' },
   { icon: <ShareIcon />, name: 'Share' },
 ];
 
