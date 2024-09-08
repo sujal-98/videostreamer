@@ -9,11 +9,12 @@ import Global from './pages/global';
 function App() {
   return (
     <div className="App">
-          <Provider store={store}>
+      <Provider store={store}>
       <Router>
         <Routes>
-          <Route path="/" element={<Global />} />
+          <Route path="/" element={<Main />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/global" element={<Global />} />
         </Routes>
       </Router>
       </Provider>

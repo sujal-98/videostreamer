@@ -1,4 +1,4 @@
-import * as React from 'react';
+import react,{useState} from 'react';
 import Box from '@mui/material/Box';
 import Backdrop from '@mui/material/Backdrop';
 import SpeedDial from '@mui/material/SpeedDial';
@@ -8,18 +8,44 @@ import FileCopyIcon from '@mui/icons-material/FileCopyOutlined';
 import SaveIcon from '@mui/icons-material/Save';
 import PrintIcon from '@mui/icons-material/Print';
 import ShareIcon from '@mui/icons-material/Share';
+import { useNavigate } from 'react-router-dom';
 
 const actions = [
-  { icon: <FileCopyIcon />, name: 'Global' },
-  { icon: <SaveIcon />, name: 'Room' },
-  { icon: <PrintIcon />, name: 'Join' },
-  { icon: <ShareIcon />, name: 'Share' },
+  { icon: <FileCopyIcon />, name: 'Global', id: '1' },
+  { icon: <SaveIcon />, name: 'Room', id: '2' },
+  { icon: <PrintIcon />, name: 'Join', id: '3' },
+  { icon: <ShareIcon />, name: 'Share', id: '4' },
 ];
 
 export default function Menu() {
-  const [open, setOpen] = React.useState(false);
+  const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
+
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
+
+  const handleClick = (id) => {
+    switch (id) {
+      case '1':
+        console.log('Global');
+        navigate('/global');
+        break;
+      case '2':
+        console.log('Room');
+        navigate('/room');
+        break;
+      case '3':
+        console.log('Join');
+        navigate('/join');
+        break;
+      case '4':
+        console.log('Share');
+        navigate('/share');
+        break;
+      default:
+        break;
+    }
+  };
 
   return (
     <Box sx={{ height: '100vh', width: '100vw', position: 'relative' }}>
@@ -38,7 +64,7 @@ export default function Menu() {
             icon={action.icon}
             tooltipTitle={action.name}
             tooltipOpen
-            onClick={handleClose}
+            onClick={() => handleClick(action.id)} // Passing function reference
           />
         ))}
       </SpeedDial>
