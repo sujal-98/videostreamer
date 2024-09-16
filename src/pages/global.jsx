@@ -2,8 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import io from 'socket.io-client';
 import Navbar from '../component/Navbar';
 import {
-  Grid, Paper, Box, CardMedia, Typography, TextField, IconButton, Button,
-  Collapse
+  Grid, Paper, Box, CardMedia, Typography, TextField, IconButton, List, ListItem, ListItemText, Button
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import SendIcon from '@mui/icons-material/Send';
@@ -12,10 +11,11 @@ import ThumbDownIcon from '@mui/icons-material/ThumbDown';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import CheckIcon from '@mui/icons-material/Check';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import StopIcon from '@mui/icons-material/Stop';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 
 const socket = io('http://localhost:1000');
 
-// Styled components here...
 // Styled components
 const Item = styled(Paper)(({ theme }) => ({
   backgroundColor: theme.palette.mode === 'dark' ? '#1A2027' : '#fff',
@@ -24,38 +24,11 @@ const Item = styled(Paper)(({ theme }) => ({
   textAlign: 'center',
   color: theme.palette.text.secondary,
   border: 'none',
-}));
-
-const Chatbox = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  flexDirection: 'column',
-  height: '100%',
-  border: '1px solid #ddd',
-  borderRadius: '10px',
-}));
-
-const ChatHeader = styled(Box)(({ theme }) => ({
-  textAlign: 'left',
-  padding: '0.9rem',
-  borderBottom: '2px dashed black',
-  fontSize: '1.5rem',
-  fontWeight: 'bold',
-  width: '100%',
-  height: '3rem',
-}));
-
-const ChatBody = styled(Box)(({ theme }) => ({
-  flex: 1,
-  overflowY: 'auto',
-  padding: theme.spacing(1),
-  backgroundColor: '#fff',
-}));
-
-const ChatFooter = styled(Box)(({ theme }) => ({
-  padding: theme.spacing(1),
-  borderTop: '1px solid #ddd',
-  display: 'flex',
-  alignItems: 'center',
+  transition: 'all 0.3s ease-in-out',
+  '&:hover': {
+    transform: 'scale(1.02)',
+    boxShadow: '0px 8px 15px rgba(0, 0, 0, 0.1)',
+  },
 }));
 
 const DescriptionItem = styled(Item)(({ theme }) => ({
@@ -67,7 +40,6 @@ const DescriptionItem = styled(Item)(({ theme }) => ({
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
-  boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.1)',
 }));
 
 const ContentSection = styled(Box)(({ theme }) => ({
@@ -90,105 +62,107 @@ const IconText = styled(Typography)(({ theme }) => ({
   color: theme.palette.text.primary,
 }));
 
+const ChatBox = styled(Box)(({ theme }) => ({
+  backgroundColor: '#f0f0f0',
+  height: '30rem',
+  display: 'flex',
+  flexDirection: 'column',
+  justifyContent: 'space-between',
+  padding: '1rem',
+}));
+
 const Global = () => {
   const videoRef = useRef(null);
-  const [peerConnections, setPeerConnections] = useState({});
-  const [isStreaming, setIsStreaming] = useState(false);
+  const localVideoRef = useRef(null);
+  const peerConnectionRef = useRef(null);
 
-  const config = {
-    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],  // Stun server setup
+  const [isEditing, setIsEditing] = useState(false); // Track editing state
+  const [title, setTitle] = useState('Stream Title'); // Default title
+  const [description, setDescription] = useState('Stream description goes here.'); // Default description
+  const [tempTitle, setTempTitle] = useState(title); // Temp state for editing
+  const [tempDescription, setTempDescription] = useState(description); // Temp state for editing
+
+  const [message, setMessage] = useState('');
+  const [messages, setMessages] = useState([]);
+
+  // WebRTC connection
+  const [streamStarted, setStreamStarted] = useState(false);
+
+  useEffect(() => {
+    const initWebRTC = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        videoRef.current.srcObject = stream;
+        const peerConnection = new RTCPeerConnection({
+          iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+        });
+
+        peerConnectionRef.current = peerConnection;
+
+        stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
+
+        peerConnection.ontrack = event => {
+          if (videoRef.current) {
+            videoRef.current.srcObject = event.streams[0];
+          }
+        };
+      
+      } catch (error) {
+        console.error('Error initializing WebRTC:', error);
+      }
+    };
+
+    initWebRTC();
+
+    return () => {
+      socket.off('offer');
+    };
+  }, []);
+
+  const handleStreamToggle = async () => {
+    if (streamStarted) {
+      if (peerConnectionRef.current) {
+        peerConnectionRef.current.close();
+        peerConnectionRef.current = null;
+        setStreamStarted(false);
+      }
+    } else {
+      if (peerConnectionRef.current) {
+        const offer = await peerConnectionRef.current.createOffer();
+        await peerConnectionRef.current.setLocalDescription(offer);
+        socket.emit('offer', offer);
+        setStreamStarted(true);
+      }
+    }
+  };
+
+  const handleEdit = () => {
+    setIsEditing(true); // Enable editing mode
+  };
+
+  const handleSave = () => {
+    setTitle(tempTitle); // Update title
+    setDescription(tempDescription); // Update description
+    setIsEditing(false); // Disable editing mode
+  };
+
+  const handleSendMessage = () => {
+    if (message.trim()) {
+      socket.emit('message', message);
+      setMessages((prevMessages) => [...prevMessages, { sender: 'Me', text: message }]);
+      setMessage('');
+    }
   };
 
   useEffect(() => {
-    const handleBroadcaster = () => {
-      navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-        .then(stream => {
-          videoRef.current.srcObject = stream;
-          socket.emit('broadcaster');
-        });
-    };
-
-    handleBroadcaster();
-
-    socket.on('offer', (id, description) => {
-      const peerConnection = new RTCPeerConnection(config);
-      peerConnections[id] = peerConnection;
-
-      const stream = videoRef.current.srcObject;
-      stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
-
-      peerConnection.setRemoteDescription(description).then(() => peerConnection.createAnswer())
-        .then(sdp => peerConnection.setLocalDescription(sdp))
-        .then(() => {
-          socket.emit('answer', id, peerConnection.localDescription);
-        });
-
-      peerConnection.onicecandidate = event => {
-        if (event.candidate) {
-          socket.emit('candidate', id, event.candidate);
-        }
-      };
-
-      setPeerConnections({ ...peerConnections, [id]: peerConnection });
-    });
-
-    socket.on('candidate', (id, candidate) => {
-      const connection = peerConnections[id];
-      if (connection) {
-        connection.addIceCandidate(new RTCIceCandidate(candidate));
-      }
-    });
-
-    socket.on('watcher', id => {
-      const peerConnection = new RTCPeerConnection(config);
-      peerConnections[id] = peerConnection;
-
-      const stream = videoRef.current.srcObject;
-      stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
-
-      peerConnection.createOffer().then(sdp => peerConnection.setLocalDescription(sdp))
-        .then(() => {
-          socket.emit('offer', id, peerConnection.localDescription);
-        });
-
-      peerConnection.onicecandidate = event => {
-        if (event.candidate) {
-          socket.emit('candidate', id, event.candidate);
-        }
-      };
-
-      setPeerConnections({ ...peerConnections, [id]: peerConnection });
-    });
-
-    socket.on('disconnectPeer', id => {
-      if (peerConnections[id]) {
-        peerConnections[id].close();
-        const updatedConnections = { ...peerConnections };
-        delete updatedConnections[id];
-        setPeerConnections(updatedConnections);
-      }
+    socket.on('message', (msg) => {
+      setMessages((prevMessages) => [...prevMessages, { sender: 'Other', text: msg }]);
     });
 
     return () => {
-      // Clean up event listeners
-      socket.off('offer');
-      socket.off('candidate');
-      socket.off('watcher');
-      socket.off('disconnectPeer');
+      socket.off('message');
     };
-  }, [peerConnections]);
-
-  const handlePlay = () => {
-    setIsStreaming(true);
-    socket.emit('broadcaster');
-  };
-
-  const handlePause = () => {
-    setIsStreaming(false);
-    // Close all peer connections when stopping the stream
-    Object.values(peerConnections).forEach(pc => pc.close());
-    setPeerConnections({});
-  };
+  }, []);
 
   return (
     <div>
@@ -198,77 +172,105 @@ const Global = () => {
           {/* Video Section */}
           <Grid item xs={8}>
             <Item sx={{ height: '30rem', marginLeft: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-              <CardMedia
-                component="video"
-                controls
-                sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                src=""
-                alt="Sample Video"
-                ref={videoRef}
+              <video
+                ref={videoRef} autoPlay playsInline controls width="1100" height="700"
               />
             </Item>
           </Grid>
 
           {/* Chatbox Section */}
           <Grid item xs={4}>
-            <Chatbox>
-              <ChatHeader>Chat</ChatHeader>
-              <ChatBody>
-                <Typography variant="body2">Chat messages will appear here.</Typography>
-              </ChatBody>
-              <ChatFooter>
-                <TextField variant="outlined" fullWidth placeholder="Type a message" size="small" sx={{ marginRight: '0.5rem' }} />
-                <IconButton color="primary">
+            <ChatBox>
+              <List sx={{ overflowY: 'scroll' }}>
+                {messages.map((msg, index) => (
+                  <ListItem key={index}>
+                    <ListItemText primary={`${msg.sender}: ${msg.text}`} />
+                  </ListItem>
+                ))}
+              </List>
+              <Box display="flex">
+                <TextField
+                  fullWidth
+                  variant="outlined"
+                  placeholder="Type a message..."
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                />
+                <IconButton color="primary" onClick={handleSendMessage}>
                   <SendIcon />
                 </IconButton>
-              </ChatFooter>
-            </Chatbox>
+              </Box>
+            </ChatBox>
           </Grid>
 
-          {/* Description Section */}
+          {/* Editable Description */}
           <Grid item xs={12}>
             <DescriptionItem>
               <ContentSection>
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <TextField variant="outlined" size="small" sx={{ width: "70%" }} />
-                  {/* Add state management for title and description if needed */}
-                  <CheckIcon color="success" />
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', marginTop: '0.5rem' }}>
-                  <TextField variant="outlined" width="70%" multiline size="small" maxRows={1} sx={{ width: "70%" }} />
-                  <IconButton>
-                    <ExpandMoreIcon />
-                  </IconButton>
-                  <CheckIcon color="success" />
-                </Box>
+                {isEditing ? (
+                  <>
+                    <TextField
+                      label="Title"
+                      variant="outlined"
+                      value={tempTitle}
+                      onChange={(e) => setTempTitle(e.target.value)}
+                      fullWidth
+                      sx={{ marginBottom: '1rem' }}
+                    />
+                    <TextField
+                      label="Description"
+                      variant="outlined"
+                      value={tempDescription}
+                      onChange={(e) => setTempDescription(e.target.value)}
+                      fullWidth
+                      multiline
+                      rows={2}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <Typography variant="h6" gutterBottom>{title}</Typography>
+                    <Typography variant="body1">{description}</Typography>
+                  </>
+                )}
               </ContentSection>
+
               <CounterSection>
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  {isStreaming ? (
-                    <Button variant="contained" color="secondary" onClick={handlePause}>
-                      Stop
-                    </Button>
-                  ) : (
-                    <Button variant="contained" color="primary" onClick={handlePlay}>
-                      Start
-                    </Button>
-                  )}
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <IconButton color="primary">
-                    <ThumbUpIcon />
-                  </IconButton>
-                  <IconText>123</IconText>
-                  <IconButton color="primary">
-                    <ThumbDownIcon />
-                  </IconButton>
-                  <IconText>45</IconText>
-                  <IconButton color="primary">
-                    <VisibilityIcon />
-                  </IconButton>
-                  <IconText>678</IconText>
-                </Box>
+                {/* Toggle Stream Button */}
+                <IconButton
+                  onClick={handleStreamToggle}
+                  color={streamStarted ? "secondary" : "primary"}
+                >
+                  {streamStarted ? <StopIcon /> : <PlayArrowIcon />}
+                </IconButton>
+                
+                <IconButton>
+                  <ThumbUpIcon color="primary" />
+                  <IconText>120</IconText>
+                </IconButton>
+                <IconButton>
+                  <ThumbDownIcon color="error" />
+                  <IconText>12</IconText>
+                </IconButton>
+                <IconButton>
+                  <VisibilityIcon />
+                  <IconText>500</IconText>
+                </IconButton>
+                <IconButton>
+                  <CheckIcon />
+                  <IconText>300</IconText>
+                </IconButton>
               </CounterSection>
+
+              {isEditing ? (
+                <IconButton onClick={handleSave}>
+                  <CheckIcon />
+                </IconButton>
+              ) : (
+                <IconButton onClick={handleEdit}>
+                  <ExpandMoreIcon />
+                </IconButton>
+              )}
             </DescriptionItem>
           </Grid>
         </Grid>

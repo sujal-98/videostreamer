@@ -7,6 +7,10 @@ const streamSchema=new Schema({
         type:String,
         required:true,
     },
+    description:{
+        type:String,
+        required:true,
+    },
     room:{
         type:String,
         required:true
@@ -14,8 +18,19 @@ const streamSchema=new Schema({
     impressions:{
         type:Integer,
         default:0
+    },
+    likes:{
+        type:Integer,
+        default:0
+    },
+    dislikes:{
+        type:Integer,
+        default:0
     }
 },
 {
     timestamps: true 
 })
+
+
+module.exports = mongoose.model('Stream', streamSchema);
