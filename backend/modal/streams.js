@@ -16,15 +16,15 @@ const streamSchema=new Schema({
         required:true
     },
     impressions:{
-        type:Integer,
+        type:Number,
         default:0
     },
     likes:{
-        type:Integer,
+        type:Number,
         default:0
     },
     dislikes:{
-        type:Integer,
+        type:Number,
         default:0
     }
 },

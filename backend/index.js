@@ -11,6 +11,7 @@ const dotenv = require('dotenv').config();
 const path = require('path');
 const mongoose = require('mongoose');
 const Redis = require('ioredis');
+const liveStream=require('./routes/stream')
 
 // Express setup
 const app = express();
@@ -76,7 +77,7 @@ app.use(cors({
 
 // Route handling
 app.use('/auth', require('./routes/auth'));
-// app.use('/live', require('./routes/Live'));
+app.use('/live', liveStream);
 
 // DB Connection
 mongoose.connect(process.env.uri).then(() => {

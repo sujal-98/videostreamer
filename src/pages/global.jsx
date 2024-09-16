@@ -13,6 +13,7 @@ import CheckIcon from '@mui/icons-material/Check';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import StopIcon from '@mui/icons-material/Stop';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import axios from 'axios';
 
 const socket = io('http://localhost:1000');
 
@@ -73,7 +74,6 @@ const ChatBox = styled(Box)(({ theme }) => ({
 
 const Global = () => {
   const videoRef = useRef(null);
-  const localVideoRef = useRef(null);
   const peerConnectionRef = useRef(null);
 
   const [isEditing, setIsEditing] = useState(false); // Track editing state
@@ -87,6 +87,19 @@ const Global = () => {
 
   // WebRTC connection
   const [streamStarted, setStreamStarted] = useState(false);
+
+  function generateRoomID(length = 8) {
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let roomID = '';
+    
+    for (let i = 0; i < length; i++) {
+      const randomIndex = Math.floor(Math.random() * characters.length);
+      roomID += characters[randomIndex];
+    }
+  
+    return roomID;
+  }
+  
 
   useEffect(() => {
     const initWebRTC = async () => {
@@ -130,7 +143,12 @@ const Global = () => {
       if (peerConnectionRef.current) {
         const offer = await peerConnectionRef.current.createOffer();
         await peerConnectionRef.current.setLocalDescription(offer);
-        socket.emit('offer', offer);
+        const room=generateRoomID();
+        const resp=axios.post('http://localhost:1000/live/create-room',{
+          roomId:room,
+          name:title,
+          description:description
+        })
         setStreamStarted(true);
       }
     }
@@ -236,7 +254,6 @@ const Global = () => {
               </ContentSection>
 
               <CounterSection>
-                {/* Toggle Stream Button */}
                 <IconButton
                   onClick={handleStreamToggle}
                   color={streamStarted ? "secondary" : "primary"}

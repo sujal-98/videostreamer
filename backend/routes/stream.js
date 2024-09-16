@@ -4,10 +4,10 @@ const Stream=require('../modal/streams')
 
 const express=require('express')
 const Router=express.Router()
-
+const http=require('http')
 const { Server } = require('socket.io');
 
-const server = http.createServer(app);
+const server = http.createServer(Router);
 const io = new Server(server);
 
 const rooms={};
@@ -41,7 +41,8 @@ Router.post('/stream',(req,res)=>{
       }
 })
 
-Router.post('/global/create-room',async (req,res)=>{
+Router.post('/create-room',async (req,res)=>{
+  console.log(req.body)
   const {name,description,roomId}=req.body;
   try{
     if (rooms[roomId]) {
@@ -50,9 +51,10 @@ Router.post('/global/create-room',async (req,res)=>{
     const stream=new Stream({
       name:name,
       description:description,
-      roomId:roomId
+      room:roomId
     })
     const result=await stream.save();
+    console.log(result)
     if(result){
     rooms[roomId] = { users: [] };
     console.log(`Room ${roomId} created`);
@@ -104,4 +106,4 @@ io.on('connection', (socket) => {
 });
 
 
-export default Router
+module.exports=Router
