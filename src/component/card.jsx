@@ -36,15 +36,18 @@ const ActionIcons = styled(CardActions)(({ theme }) => ({
 export default function CustomCard({ item }) {
   return (
     <StyledCard>
+      {/* Assuming a default thumbnail or placeholder */}
       <CardMedia
         component="img"
         height="194"
-        image={item.thumbnail}
+        image="https://via.placeholder.com/345x194" // Placeholder image
         alt={item.name}
       />
       <CardHeader
         avatar={
-          <Avatar src={item.profilePhoto} sx={{ bgcolor: red[500] }} aria-label="profile-photo" />
+          <Avatar sx={{ bgcolor: red[500] }} aria-label="profile-photo">
+            {item.name.charAt(0)} {/* Display the first letter of the stream name */}
+          </Avatar>
         }
         action={
           <IconButton aria-label="settings">
@@ -52,7 +55,7 @@ export default function CustomCard({ item }) {
           </IconButton>
         }
         title={item.name}
-        subheader={item.date}
+        subheader={new Date(item.createdAt).toLocaleDateString()} 
       />
       <StyledCardContent>
         <Typography variant="body2" color="text.secondary">
@@ -63,7 +66,7 @@ export default function CustomCard({ item }) {
         <IconButton aria-label="add to favorites">
           <FavoriteIcon />
           <Typography variant="body2" color="text.secondary" sx={{ marginLeft: 1 }}>
-            {item.likesCount}
+            {item.likes}
           </Typography>
         </IconButton>
         <IconButton aria-label="share">

@@ -12,6 +12,7 @@ const path = require('path');
 const mongoose = require('mongoose');
 const Redis = require('ioredis');
 const liveStream=require('./routes/stream')
+const fetch=require('./routes/fetch')
 
 // Express setup
 const app = express();
@@ -78,6 +79,7 @@ app.use(cors({
 // Route handling
 app.use('/auth', require('./routes/auth'));
 app.use('/live', liveStream);
+app.use('/videos',fetch)
 
 // DB Connection
 mongoose.connect(process.env.uri).then(() => {

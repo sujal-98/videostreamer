@@ -10,7 +10,6 @@ const Main = () => {
       <Navbar />
       <Body />
       <Menu />
-      
     </div>
   )
 }
