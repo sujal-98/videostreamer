@@ -32,5 +32,7 @@ const streamSchema=new Schema({
     timestamps: true 
 })
 
+streamSchema.index({ createdAt: 1 }, { expireAfterSeconds: 3600 });
+
 
 module.exports = mongoose.model('Stream', streamSchema);
