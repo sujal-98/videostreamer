@@ -5,6 +5,7 @@ import { Provider } from 'react-redux';
 import store from './redux/store';
 import { BrowserRouter as Router,Routes,Route } from 'react-router-dom';
 import Global from './pages/global';
+import GlobalViewer from './pages/GlobalViewer';
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
           <Route path="/" element={<Main />} />
           <Route path="/login" element={<Login />} />
           <Route path="/global" element={<Global />} />
+          <Route path="/globalviewer" element={<GlobalViewer />} />
         </Routes>
       </Router>
       </Provider>
