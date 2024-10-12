@@ -23,6 +23,7 @@
     "gapi-script": "^1.2.0",
     "google-auth-library": "^9.14.0",
     "ioredis": "^5.4.1",
+    "mediasoup": "^3.14.15",
     "mongoose": "^8.5.1",
     "passport": "^0.7.0",
     "passport-google-oauth": "^2.0.0",

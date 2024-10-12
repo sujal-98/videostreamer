@@ -72,38 +72,26 @@ const GlobalViewer = () => {
   const [title, setTitle] = useState('Stream Title'); // Default title
   const [description, setDescription] = useState('Stream description goes here.'); // Default description
   const [messages, setMessages] = useState([]);
+  const [roomId, setRoomId] = useState('');
+  const [streaming, setStreaming] = useState(false);
 
   useEffect(() => {
     // Set up WebRTC to view stream
-    const initWebRTC = async () => {
-      try {
-        const peerConnection = new RTCPeerConnection({
-          iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-        });
+    socket.emit('receive-streams', (streamInfo) => {
+      console.log('Stream information received:', streamInfo);
 
-        peerConnection.ontrack = event => {
+      // Assuming a single stream for now; we create an RTC connection for each stream
+      streamInfo.forEach((info) => {
+        const rtcPeerConnection = new RTCPeerConnection();
+        rtcPeerConnection.setRemoteDescription(new RTCSessionDescription(info.rtpParameters));
+
+        rtcPeerConnection.ontrack = (event) => {
           if (videoRef.current) {
             videoRef.current.srcObject = event.streams[0];
           }
         };
-
-        // Listen for the offer to connect to the stream
-        socket.on('offer', async (offer) => {
-          await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-          const answer = await peerConnection.createAnswer();
-          await peerConnection.setLocalDescription(answer);
-          socket.emit('answer', answer);
-        });
-      } catch (error) {
-        console.error('Error initializing WebRTC:', error);
-      }
-    };
-
-    initWebRTC();
-
-    return () => {
-      socket.off('offer');
-    };
+      });
+    });
   }, []);
 
   useEffect(() => {

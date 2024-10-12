@@ -74,7 +74,6 @@ const ChatBox = styled(Box)(({ theme }) => ({
 
 const Global = () => {
   const videoRef = useRef(null);
-  const peerConnectionRef = useRef(null);
 
   const [isEditing, setIsEditing] = useState(false); // Track editing state
   const [title, setTitle] = useState('Stream Title'); // Default title
@@ -86,6 +85,8 @@ const Global = () => {
   const [messages, setMessages] = useState([]);
 
   // WebRTC connection
+  const [transport, setTransport] = useState(null);
+  const [stream, setStream] = useState(null);
   const [streamStarted, setStreamStarted] = useState(false);
 
   function generateRoomID(length = 8) {
@@ -100,56 +101,46 @@ const Global = () => {
     return roomID;
   }
   
-
   useEffect(() => {
     const initWebRTC = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        videoRef.current.srcObject = stream;
-        const peerConnection = new RTCPeerConnection({
-          iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-        });
+      const localStream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true
+    });
+    setStream(localStream)
+    videoRef.current.srcObject = stream;
+  }
 
-        peerConnectionRef.current = peerConnection;
-
-        stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
-
-        peerConnection.ontrack = event => {
-          if (videoRef.current) {
-            videoRef.current.srcObject = event.streams[0];
-          }
-        };
-      
-      } catch (error) {
-        console.error('Error initializing WebRTC:', error);
-      }
-    };
-
-    initWebRTC();
-
-    return () => {
-      socket.off('offer');
-    };
-  }, []);
+  initWebRTC();
+}, []);
 
   const handleStreamToggle = async () => {
     if (streamStarted) {
-      if (peerConnectionRef.current) {
-        peerConnectionRef.current.close();
-        peerConnectionRef.current = null;
+      if (videoRef.current) {
+        videoRef.current.close();
+        videoRef.current = null;
         setStreamStarted(false);
       }
     } else {
-      if (peerConnectionRef.current) {
-        const offer = await peerConnectionRef.current.createOffer();
-        await peerConnectionRef.current.setLocalDescription(offer);
+      if (videoRef.current) {
         const room=generateRoomID();
-        const resp=axios.post('http://localhost:1000/live/create-room',{
-          roomId:room,
-          name:title,
-          description:description
-        })
+        socket.emit('join-room', room, title, description);
+        // Use transport to send media track to the server
+        socket.emit('create-transport', (data) => {
+          console.log('Transport created:', data);
+          socket.emit('connect-transport')
+          // Use transport to send media track to the server
+          stream.getTracks().forEach(track => {
+            socket.emit('send-track', { track });
+          });
+        });
         setStreamStarted(true);
+    // Send the offer to the SFU through the signaling server
+    // socket.emit('broadcaster-offer', offer);
+    // // Receive the answer from the SFU
+    // socket.on('sfu-answer', async (answer) => {
+    //     await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+    // });
       }
     }
   };

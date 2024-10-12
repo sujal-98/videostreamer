@@ -3,7 +3,6 @@ const passport = require('./resource/passport');
 const express = require('express');
 const cors = require('cors');
 const http = require('http');
-const { Server } = require('socket.io');
 const bodyParser = require("body-parser");
 const RedisStore = require("connect-redis").default;
 const session = require('express-session');
@@ -11,46 +10,13 @@ const dotenv = require('dotenv').config();
 const path = require('path');
 const mongoose = require('mongoose');
 const Redis = require('ioredis');
-const liveStream=require('./routes/stream')
-const fetch=require('./routes/fetch')
+const setupSocket = require('./routes/stream');
+const fetch = require('./routes/fetch');
 
 // Express setup
 const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
-
-app.use(cors(
-{  origin: ['http://localhost:3000'],
-  methods: ['GET', 'POST'],        
-  credentials: true  
-}))
-
-
-io.on('connection', (socket) => {
-  console.log('a user connected:', socket.id);
-
-  socket.on('create-stream', (streamId) => {
-    socket.join(streamId);
-    console.log(`User ${socket.id} created stream: ${streamId}`);
-  });
-
-  socket.on('join-stream', (streamId) => {
-    socket.join(streamId);
-    console.log(`User ${socket.id} joined stream: ${streamId}`);
-    socket.to(streamId).emit('user-joined', socket.id);
-  });
-
-  socket.on('signal', (data) => {
-    io.to(data.to).emit('signal', {
-      from: socket.id,
-      signal: data.signal,
-    });
-  });
-
-  socket.on('disconnect', () => {
-    console.log('user disconnected:', socket.id);
-  });
-});
+const server = http.createServer(app);  // http server for socket.io
+setupSocket(server); // Passing the HTTP server to your Socket.IO setup
 
 // Initialize Redis client
 const redisClient = new Redis({
@@ -58,8 +24,15 @@ const redisClient = new Redis({
   port: 2000,
 });
 
+app.use(cors({
+  origin: ['http://localhost:3000'],
+  methods: ["GET", "POST"],
+  credentials:true,
+
+}));
+
 // Set up static file serving
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public')));  // Use `app.use`
 
 // Set up session management
 app.use(session({
@@ -77,15 +50,10 @@ app.use(passport.authenticate('session'));
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(express.json());
-app.use(cors({
-  origin: 'http://localhost:3000', 
-  credentials: true
-}));
 
 // Route handling
 app.use('/auth', require('./routes/auth'));
-app.use('/live', liveStream);
-app.use('/videos',fetch)
+app.use('/videos', fetch);
 
 // DB Connection
 mongoose.connect(process.env.uri).then(() => {

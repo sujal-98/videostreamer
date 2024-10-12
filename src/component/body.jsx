@@ -2,9 +2,11 @@ import React, { useEffect, useState } from 'react';
 import Card from './card'; 
 import './body.css';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
 const Body = () => {
   const [videos, setVideos] = useState([]);
+  const navigate=useNavigate();
 
   useEffect(() => {
     const fetchVideos = async () => {
@@ -19,11 +21,18 @@ const Body = () => {
     fetchVideos();
   }, []);
 
+
+  const handleView=async ()=>{
+    navigate('/globalviewer')
+  }
+
   return (
     <div className='body'>
       {videos.length > 0 ? (
         videos.map((video, index) => (
-          <Card key={video._id} item={video} />  
+          <section onClick={()=>{handleView()}}>
+          <Card key={video._id} item={video} />
+          </section>  
         ))
       ) : (
         <p>No videos available</p>
