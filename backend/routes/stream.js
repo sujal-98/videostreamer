@@ -24,21 +24,34 @@ let worker;
 let router;
 
 (async () => {
-    worker = await mediasoup.createWorker();
+    worker = await mediasoup.createWorker(
+ {     rtcMinPort: 2000,
+      rtcMaxPort: 2020,  }
+    );
     router = await worker.createRouter({
       mediaCodecs: [
         {
           kind: 'audio',
           mimeType: 'audio/opus',
           clockRate: 48000,
+          payloadType: 100,
           channels: 2
         },
         {
           kind: 'video',
           mimeType: 'video/VP8',
-          clockRate: 90000
+          clockRate: 90000,
+          payloadType: 101,
         }
-      ]
+      ],
+      encodings: [
+        {
+          ssrc: Math.floor(Math.random() * 1000000000), // Ensure each encoding has a unique SSRC
+          // Optional: Include additional parameters for simulcast
+          // rid: 'send', // Only needed if you are using simulcast
+          // mid: 'video' // Optional, but good to include for media identification
+        }
+      ],
     });
     console.log('Mediasoup worker and router created.');  
 })();
@@ -56,8 +69,24 @@ async function createWebRtcTransport() {
   return transport;
 }
 
+//Function to get rtp capabilities
+
+
+
+
 io.on('connection', (socket) => {
   console.log('A user connected:', socket.id);
+
+  socket.on('getRtpCapabilities', (callback) => {
+    if (router) {
+      const rtpCapabilities = router.rtpCapabilities;
+      console.log('RTP Capabilities:', rtpCapabilities);
+      callback({ rtpCapabilities });
+    } else {
+      console.error('Router not ready');
+      callback({ error: 'Router not ready' });
+    }
+  });
 
   // Handle joining a room
   socket.on('join-room',async (roomId,name,description) => {
@@ -72,13 +101,7 @@ io.on('connection', (socket) => {
   socket.join(roomId);
   console.log("console joined the room")
   console.log(`Client ${socket.id} joined room: ${roomId}`);
-  const stream=new Stream({
-    name:name,
-    description:description,
-    room:roomId
-  })
-  const result=await stream.save();
-  console.log("room saved")
+  
   // Notify other clients in the room
   // socket.to(roomId).emit('user-connected', socket.id); //unnecessary
   })
@@ -95,19 +118,64 @@ io.on('connection', (socket) => {
       });
 
       // Connect transport
-      // socket.on('connect-transport', async ({ dtlsParameters }) => {
-      //     await transport.connect({ dtlsParameters });
-      // });
+      socket.on('connect-transport', async (dtlsParameters ) => {
+        console.log('DTLS Parameters:', dtlsParameters); 
+          await transport.connect( {dtlsParameters} );
+      });
 
       // Handle track sending
-      socket.on('send-track', async ({ track }) => {
-          const producer = await transport.produce({ track });
-          rooms[roomId].producers.push(producer); // Store producer in the room
-          console.log('Producer created:', producer.id);
+     // Handle track sending
+socket.on('send-track', async (track,room,name,description) => {
+  console.log("Track: ", track);
 
-          // Notify other clients in the room
-          // socket.to(roomId).emit('new-producer', producer.id);
+  const { id, kind, label, enabled, muted, readyState, stats,rtp } = track;
+
+  console.log("RTP: ", rtp);
+  const upd=rtp.codecs.find(item=>item.kind===kind)
+  rtp.codec=upd
+  rtp.codecs.forEach((codec)=>{
+    codec.payloadType=codec.preferredPayloadType
+  })
+  rtp.headerExtensions.forEach((item)=>{
+    item.id=item.preferredId
+  })
+  rtp.encodings= [
+    {
+      ssrc: Math.floor(Math.random() * 1000000000), // Ensure each encoding has a unique SSRC
+      // Optional: Include additional parameters for simulcast
+      // rid: 'send', // Only needed if you are using simulcast
+      // mid: 'video' // Optional, but good to include for media identification
+    }
+  ]
+  console.log("RTP: ", rtp);
+
+  try {
+      // Create the producer using the rtp parameters
+      const producer = await transport.produce({
+        kind:kind,
+        rtpParameters	:rtp,
+          track: track,
+          codec:rtp.codecs // Pass the MediaStreamTrack directly
+        
       });
+
+      rooms[room].producers.push(producer); // Store producer in the room
+      console.log('Producer created:', producer.id);
+      const stream=new Stream({
+        name:name,
+        description:description,
+        room:room
+      })
+      const result=await stream.save();
+      console.log("room saved")
+
+      // Notify other clients in the room
+      // Uncomment the line below to notify clients
+      // socket.to(roomId).emit('new-producer', producer.id);
+  } catch (error) {
+      console.error('Error creating producer:', error);
+  }
+});
 
       // Handle receiving streams
       socket.on('receive-streams', async (callback) => {

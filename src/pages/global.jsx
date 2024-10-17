@@ -107,6 +107,7 @@ const Global = () => {
         video: true,
         audio: true
     });
+    console.log("local stream: ",localStream)
     setStream(localStream)
     videoRef.current.srcObject = stream;
   }
@@ -128,11 +129,31 @@ const Global = () => {
         // Use transport to send media track to the server
         socket.emit('create-transport', (data) => {
           console.log('Transport created:', data);
-          socket.emit('connect-transport')
-          // Use transport to send media track to the server
-          stream.getTracks().forEach(track => {
-            socket.emit('send-track', { track });
+          const dtls=data.dtlsParameters
+          socket.emit('connect-transport', ( dtls ));
+          socket.emit('getRtpCapabilities', (data) => {
+            if (data.error) {
+              console.error('Error getting RTP Capabilities:', data.error);
+            } else {
+              console.log('RTP Capabilities:', data.rtpCapabilities);
+              // Use these capabilities to create a WebRTC connection, e.g., create a Mediasoup device
+            }
+            stream.getTracks().forEach(track => {
+              console.log("ahemji : ", track) 
+              socket.emit('send-track',  {
+                id: track.id,
+                kind: track.kind,
+                label: track.label,
+                enabled: track.enabled,
+                readyState:track.readyState,
+                stats:track.stats,
+                muted:track.muted,
+                rtp:data.rtpCapabilities
+            },room, title, description);
+            });
           });
+          // Use transport to send media track to the server
+          
         });
         setStreamStarted(true);
     // Send the offer to the SFU through the signaling server
