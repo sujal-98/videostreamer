@@ -69,10 +69,6 @@ async function createWebRtcTransport() {
   return transport;
 }
 
-//Function to get rtp capabilities
-
-
-
 
 io.on('connection', (socket) => {
   console.log('A user connected:', socket.id);
@@ -93,13 +89,19 @@ io.on('connection', (socket) => {
     console.log("joining process inititated")
     if (!rooms[roomId]) {
       rooms[roomId] = {
-          producers: [],
+          producers: [], 
           consumers: [],
       };
+      const stream=new Stream({
+        name:name,
+        description:description,
+        room:room
+      })
+      const result=await stream.save();
+      console.log("room saved")
       console.log(`Room created: ${roomId}`);
   }
   socket.join(roomId);
-  console.log("console joined the room")
   console.log(`Client ${socket.id} joined room: ${roomId}`);
   
   // Notify other clients in the room
@@ -161,13 +163,7 @@ socket.on('send-track', async (track,room,name,description) => {
 
       rooms[room].producers.push(producer); // Store producer in the room
       console.log('Producer created:', producer.id);
-      const stream=new Stream({
-        name:name,
-        description:description,
-        room:room
-      })
-      const result=await stream.save();
-      console.log("room saved")
+      
 
       // Notify other clients in the room
       // Uncomment the line below to notify clients
@@ -178,7 +174,8 @@ socket.on('send-track', async (track,room,name,description) => {
 });
 
       // Handle receiving streams
-      socket.on('receive-streams', async (callback) => {
+      socket.on('receive-streams', async (callback,room) => {
+        console.log("working")
         const transportOptions = {
           listenIps: [{ ip: '192.168.29.31', announcedIp: null }], 
           enableUdp: true,
@@ -186,13 +183,18 @@ socket.on('send-track', async (track,room,name,description) => {
           preferUdp: true,
           initialAvailableOutgoingBitrate: 600000,
       };
+      console.log("transport options: ",transportOptions)
           const consumerInfos = await Promise.all(
-              rooms[roomId].producers.map(async (producer) => {
+              rooms[room].producers.map(async (producer) => {
                   const consumerTransport = await createWebRtcTransport();
                   const consumer = await consumerTransport.consume({
                       producerId: producer.id,
                       rtpCapabilities: router.rtpCapabilities,
                   });
+                  console.log(room)
+                  console.log(consumer)
+                  rooms[room].consumers.push(consumer);
+                  console.log("consumer created")
                   return {
                       id: consumer.id,
                       producerId: producer.id,

@@ -12,6 +12,7 @@ const Body = () => {
     const fetchVideos = async () => {
       try {
         const response = await axios.get('http://localhost:1000/videos/fetch');
+    console.log("video",response)
         setVideos(response.data);
       } catch (error) {
         console.log('Error fetching videos:', error);
@@ -19,18 +20,29 @@ const Body = () => {
     };
 
     fetchVideos();
+
   }, []);
 
 
-  const handleView=async ()=>{
-    navigate('/globalviewer')
+  const handleView=async (id,like,dislike,impression)=>{
+    navigate(`/globalviewer`,{
+      state:{
+        room:id,
+        likes:like,
+        dislikes:dislike,
+        impressions:impression
+      }
+    })
   }
 
   return (
+    <>
+
     <div className='body'>
       {videos.length > 0 ? (
         videos.map((video, index) => (
-          <section onClick={()=>{handleView()}}>
+          
+          <section onClick={()=>{handleView(video.room,video.likes,video.dislikes,video.impressions)}}>
           <Card key={video._id} item={video} />
           </section>  
         ))
@@ -38,7 +50,7 @@ const Body = () => {
         <p>No videos available</p>
       )}
     </div>
-  );
+    </>);
 };
 
 export default Body;

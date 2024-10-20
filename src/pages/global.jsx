@@ -13,7 +13,6 @@ import CheckIcon from '@mui/icons-material/Check';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import StopIcon from '@mui/icons-material/Stop';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import axios from 'axios';
 
 const socket = io('http://localhost:1000');
 
@@ -85,7 +84,6 @@ const Global = () => {
   const [messages, setMessages] = useState([]);
 
   // WebRTC connection
-  const [transport, setTransport] = useState(null);
   const [stream, setStream] = useState(null);
   const [streamStarted, setStreamStarted] = useState(false);
 

@@ -9,7 +9,7 @@ import ThumbUpIcon from '@mui/icons-material/ThumbUp';
 import ThumbDownIcon from '@mui/icons-material/ThumbDown';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import CheckIcon from '@mui/icons-material/Check';
-
+import { useLocation } from 'react-router-dom'
 const socket = io('http://localhost:1000');
 
 // Styled components
@@ -72,14 +72,15 @@ const GlobalViewer = () => {
   const [title, setTitle] = useState('Stream Title'); // Default title
   const [description, setDescription] = useState('Stream description goes here.'); // Default description
   const [messages, setMessages] = useState([]);
-  const [roomId, setRoomId] = useState('');
-  const [streaming, setStreaming] = useState(false);
+  const location = useLocation();
+  const state=location.state;
+  const room=state.room;
 
   useEffect(() => {
     // Set up WebRTC to view stream
-    socket.emit('receive-streams', (streamInfo) => {
+    console.log("useEffect working ",room)
+    socket.emit('receive-streams', room, (streamInfo) =>{
       console.log('Stream information received:', streamInfo);
-
       // Assuming a single stream for now; we create an RTC connection for each stream
       streamInfo.forEach((info) => {
         const rtcPeerConnection = new RTCPeerConnection();
@@ -94,16 +95,16 @@ const GlobalViewer = () => {
     });
   }, []);
 
-  useEffect(() => {
-    // Listening for messages from the chat
-    socket.on('message', (msg) => {
-      setMessages((prevMessages) => [...prevMessages, { sender: 'Other', text: msg }]);
-    });
+  // useEffect(() => {
+  //   // Listening for messages from the chat
+  //   socket.on('message', (msg) => {
+  //     setMessages((prevMessages) => [...prevMessages, { sender: 'Other', text: msg }]);
+  //   });
 
-    return () => {
-      socket.off('message');
-    };
-  }, []);
+  //   return () => {
+  //     socket.off('message');
+  //   };
+  // }, []);
 
   return (
     <div>
