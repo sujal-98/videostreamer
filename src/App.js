@@ -6,6 +6,8 @@ import store from './redux/store';
 import { BrowserRouter as Router,Routes,Route } from 'react-router-dom';
 import Global from './pages/global';
 import GlobalViewer from './pages/GlobalViewer';
+import Lobby from './pages/Lobby';
+import Meeting from './pages/Meeting';
 
 function App() {
   return (
@@ -17,6 +19,8 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/global" element={<Global />} />
           <Route path="/globalviewer" element={<GlobalViewer />} />
+          <Route path="/meetinglobby" element={<Lobby />} />
+          <Route path="/meeting" element={ <Meeting /> } />
         </Routes>
       </Router>
       </Provider>

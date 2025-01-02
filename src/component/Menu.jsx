@@ -12,7 +12,7 @@ import { useNavigate } from 'react-router-dom';
 
 const actions = [
   { icon: <FileCopyIcon />, name: 'Global', id: '1' },
-  { icon: <SaveIcon />, name: 'Room', id: '2' },
+  { icon: <SaveIcon />, name: 'Meetings', id: '2' },
   { icon: <PrintIcon />, name: 'Join', id: '3' },
   { icon: <ShareIcon />, name: 'Share', id: '4' },
 ];
@@ -31,8 +31,8 @@ export default function Menu() {
         navigate('/global');
         break;
       case '2':
-        console.log('Room');
-        navigate('/room');
+        console.log('Lobby');
+        navigate('/meetinglobby');
         break;
       case '3':
         console.log('Join');

@@ -28,7 +28,7 @@ const Item = styled(Paper)(({ theme }) => ({
   '&:hover': {
     transform: 'scale(1.02)',
     boxShadow: '0px 8px 15px rgba(0, 0, 0, 0.1)',
-  },
+  }
 }));
 
 const DescriptionItem = styled(Item)(({ theme }) => ({

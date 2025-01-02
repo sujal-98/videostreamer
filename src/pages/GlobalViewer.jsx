@@ -79,12 +79,18 @@ const GlobalViewer = () => {
   useEffect(() => {
     // Set up WebRTC to view stream
     console.log("useEffect working ",room)
-    socket.emit('receive-streams', room, (streamInfo) =>{
+    socket.emit('receive-streams',room, (streamInfo) =>{
       console.log('Stream information received:', streamInfo);
       // Assuming a single stream for now; we create an RTC connection for each stream
       streamInfo.forEach((info) => {
+        console.log("inner info: ", info)
+        console.log("Received SDP:", info.rtpParameters.sdp);
+
         const rtcPeerConnection = new RTCPeerConnection();
-        rtcPeerConnection.setRemoteDescription(new RTCSessionDescription(info.rtpParameters));
+        rtcPeerConnection.setRemoteDescription(new RTCSessionDescription({
+          type: 'offer', 
+          sdp: info.rtpParameters.sdp,
+        }));
 
         rtcPeerConnection.ontrack = (event) => {
           if (videoRef.current) {
