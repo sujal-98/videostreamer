@@ -1,7 +1,76 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Device } from 'mediasoup-client';
+import io from 'socket.io-client';
+
 import { Camera, Mic, MessageSquare, MonitorUp, MicOff, CameraOff, Send } from 'lucide-react';
 
+const socket = io('http://localhost:1000');
+
 const Meeting = () => {
+  const videoRef = useRef(null);
+  const [device, setDevice] = useState(null);
+  const [isDeviceReady, setIsDeviceReady] = useState(false);
+  const [room, setRoom] = useState('');
+
+  const generateRoomID = (length = 8) => {
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    return Array.from({ length }, () => characters[Math.floor(Math.random() * characters.length)]).join('');
+  };
+
+  useEffect(() => {
+    const initMediaSoupDevice = async () => {
+      try {
+        const generatedRoomID = generateRoomID(10);
+        setRoom(generatedRoomID);
+
+        socket.emit('create-room', generatedRoomID, async (response) => {
+          if (!response.success) {
+            console.error('Error creating room:', response.error);
+            return;
+          }
+
+          console.log('RTP Capabilities:', response.routerRtpCapabilities);
+
+          const mediasoupDevice = new Device();
+          await mediasoupDevice.load({ routerRtpCapabilities: response.routerRtpCapabilities });
+          setDevice(mediasoupDevice);
+          setIsDeviceReady(true);
+
+          console.log('MediaSoup device is ready');
+        });
+      } catch (error) {
+        console.error('Error initializing MediaSoup device:', error);
+      }
+    };
+
+    const createSendTransport = () => {
+      socket.emit('createWebRtcTransport', { sender: true }, ({ params, success, error }) => {
+        if (!success) {
+          console.error('Error creating transport:', error);
+          return;
+        }
+        
+        console.log('Transport params received:', params);
+    
+      });
+    };
+
+    const captureMedia = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+        if (videoRef.current) videoRef.current.srcObject = stream;
+        console.log('Media stream captured:', stream);
+      } catch (error) {
+        console.error('Error capturing media:', error);
+      }
+    };
+
+    initMediaSoupDevice();
+    captureMedia();
+    createSendTransport();
+  }, []);
+
+
   const [participants, setParticipants] = useState([
     { id: 1, name: 'You', isMuted: false, isCameraOff: false }
   ]);
@@ -85,10 +154,15 @@ const Meeting = () => {
                   </div>
                 </div>
               ) : (
-                <img 
+                <video 
                   src="/api/placeholder/640/360" 
                   alt={participant.name}
+                  autoPlay
+                  playsInline
                   className="w-full h-full object-cover"
+                  
+                  {...(participant.id === 1 ? { ref: videoRef } : {})}
+
                 />
               )}
               <div className="absolute bottom-4 left-4 text-white bg-black bg-opacity-50 px-2 py-1 rounded">

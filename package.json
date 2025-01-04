@@ -25,6 +25,7 @@
     "ioredis": "^5.4.1",
     "lucide-react": "^0.462.0",
     "mediasoup": "^3.14.15",
+    "mediasoup-client": "^3.8.1",
     "mongoose": "^8.5.1",
     "passport": "^0.7.0",
     "passport-google-oauth": "^2.0.0",
