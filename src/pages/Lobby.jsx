@@ -1,27 +1,28 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState , useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, Video, Users, Link } from 'lucide-react';
+import { Camera, Video, Users } from 'lucide-react';
+import { useSocket } from '../contest/socketContext';
+import { useSelector } from 'react-redux';
 
-const Lobby = () => 
-  {
-
-    const navigate=useNavigate();
+const Lobby = () => {
+  const socket = useSocket();
+  const {user } = useSelector((state) => state.auth);
+  const navigate = useNavigate();
 
   const [roomCode, setRoomCode] = useState('');
+console.log("lobby email ",user?.email)
+  // Set a default email if userEmail is missing
+  const userEmail = user?.email || 'guest@default.com';
+  const isGuest = userEmail === 'guest@default.com'; // Flag to check if the user is a guest
 
   const startCamera = async () => {
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }, 
+        video: { width: { ideal: 1280 }, height: { ideal: 720 } }, 
         audio: true 
       });
-      
-      // Get video element by ID
+
       const videoElement = document.getElementById('videoStream');
-      
       if (videoElement) {
         videoElement.srcObject = mediaStream;
         videoElement.onloadedmetadata = () => {
@@ -36,20 +37,55 @@ const Lobby = () =>
     }
   };
 
-  const startInstantMeeting = () => {
-    const newRoomCode = Math.random().toString(36).substring(7);
-    navigate('/meeting')
+  function generateRoomNumber() {
+    const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    let letter = letters[Math.floor(Math.random() * letters.length)];
+    let floor = Math.floor(Math.random() * 9) + 1; 
+    let room = Math.floor(Math.random() * 50) + 1; 
+    return `${letter}${floor}${room.toString().padStart(2, '0')}`;
+  }
 
-    alert(`New Meeting Room Created: ${newRoomCode}`);
+
+  const handleJoinRoom = useCallback(
+    (data) => {
+      const { email, room } = data;
+
+      navigate(`/meeting/${room}`);
+     
+    },
+    [navigate]
+  );
+
+  const handleJoinOtherRoom = useCallback(
+    (data) => {
+      console.log("data message ",data.message)
+      if(data.message ==="invalid room") return;
+      const { email, roomCode } = data;
+      console.log("data")
+      navigate(`/meeting/${roomCode}`);
+    },
+    [navigate]
+  );
+
+  useEffect(() => {
+    socket.on('room-join',handleJoinRoom );
+    socket.on('otheroom-join',handleJoinOtherRoom );
+
+    return () => {
+      socket.off('room-join',handleJoinRoom);
+    };
+  }, [socket,handleJoinRoom]);
+
+  const startInstantMeeting = () => {
+    if (isGuest) return;
+    const room = generateRoomNumber();
+    socket.emit('room-join', { userEmail, room });
   };
 
-  const joinMeeting = () => {
-    if (roomCode.trim()) {
-      alert(`Joining meeting room: ${roomCode}`);
-      navigate('/meeting')
-    } else {
-      alert('Please enter a valid room code');
-    }
+  const startRoomMeeting = () => {
+    if (!roomCode || roomCode==="" || isGuest) return;
+    
+    socket.emit('otheroom-join', { userEmail, roomCode });
   };
 
   return (
@@ -58,7 +94,10 @@ const Lobby = () =>
       <div className="w-1/2 p-4 flex flex-col items-center justify-center bg-white">
         <button 
           onClick={startCamera} 
-          className="flex items-center bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+          disabled={isGuest}
+          className={`flex items-center px-4 py-2 rounded transition ${
+            !isGuest ? "bg-blue-500 text-white hover:bg-blue-600" : "bg-gray-400 text-gray-700 cursor-not-allowed"
+          }`}
         >
           <Camera className="mr-2" /> Start Camera
         </button>
@@ -80,7 +119,10 @@ const Lobby = () =>
         {/* Start Instant Meeting */}
         <button 
           onClick={startInstantMeeting}
-          className="flex items-center justify-center bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 transition"
+          disabled={isGuest}
+          className={`flex items-center justify-center px-6 py-3 rounded-lg transition ${
+            !isGuest ? "bg-green-500 text-white hover:bg-green-600" : "bg-gray-400 text-gray-700 cursor-not-allowed"
+          }`}
         >
           <Video className="mr-2" /> Start Instant Meeting
         </button>
@@ -96,8 +138,11 @@ const Lobby = () =>
               className="flex-grow p-3 rounded-l-lg focus:outline-none"
             />
             <button 
-              onClick={joinMeeting}
-              className="flex items-center bg-blue-500 text-white px-4 py-3 rounded-r-lg hover:bg-blue-600"
+              disabled={isGuest || !roomCode.trim()}
+              className={`flex items-center px-4 py-3 rounded-r-lg transition ${
+                !isGuest && roomCode.trim() ? "bg-blue-500 text-white hover:bg-blue-600" : "bg-gray-400 text-gray-700 cursor-not-allowed"
+              }`}
+              onClick={startRoomMeeting}
             >
               <Users className="mr-2" /> Join
             </button>

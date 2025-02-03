@@ -10,7 +10,6 @@ import ThumbDownIcon from '@mui/icons-material/ThumbDown';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import CheckIcon from '@mui/icons-material/Check';
 import { useLocation } from 'react-router-dom'
-const socket = io('http://localhost:1000');
 
 // Styled components
 const Item = styled(Paper)(({ theme }) => ({
@@ -69,6 +68,7 @@ const ChatBox = styled(Box)(({ theme }) => ({
 
 const GlobalViewer = () => {
   const videoRef = useRef(null);
+  const socket=null;
   const [title, setTitle] = useState('Stream Title'); // Default title
   const [description, setDescription] = useState('Stream description goes here.'); // Default description
   const [messages, setMessages] = useState([]);

@@ -14,7 +14,6 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import StopIcon from '@mui/icons-material/Stop';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 
-const socket = io('http://localhost:1000');
 
 // Styled components
 const Item = styled(Paper)(({ theme }) => ({
@@ -73,7 +72,7 @@ const ChatBox = styled(Box)(({ theme }) => ({
 
 const Global = () => {
   const videoRef = useRef(null);
-
+  const socket=null;
   const [isEditing, setIsEditing] = useState(false); // Track editing state
   const [title, setTitle] = useState('Stream Title'); // Default title
   const [description, setDescription] = useState('Stream description goes here.'); // Default description

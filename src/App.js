@@ -8,21 +8,31 @@ import Global from './pages/global';
 import GlobalViewer from './pages/GlobalViewer';
 import Lobby from './pages/Lobby';
 import Meeting from './pages/Meeting';
+import FileShare from './pages/fileShare';
+import Meeting2 from './pages/Meeting2';
+import { SocketProvider } from './contest/socketContext';
 
 function App() {
   return (
     <div className="App">
       <Provider store={store}>
+      <SocketProvider>
       <Router>
         <Routes>
           <Route path="/" element={<Main />} />
           <Route path="/login" element={<Login />} />
           <Route path="/global" element={<Global />} />
           <Route path="/globalviewer" element={<GlobalViewer />} />
-          <Route path="/meetinglobby" element={<Lobby />} />
-          <Route path="/meeting" element={ <Meeting /> } />
+          <Route path="/meetinglobby" element={    
+          <Lobby />   
+} />
+          <Route path="/meeting/:id" element={  <Meeting2 />  
+ } />
+          <Route path="/fileShare" element={ <FileShare /> } />
+
         </Routes>
       </Router>
+      </SocketProvider>
       </Provider>
     </div>
   );

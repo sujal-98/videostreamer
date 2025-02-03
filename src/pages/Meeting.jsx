@@ -1,79 +1,338 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Device } from 'mediasoup-client';
+import { useLocation } from 'react-router-dom';
 import io from 'socket.io-client';
-
 import { Camera, Mic, MessageSquare, MonitorUp, MicOff, CameraOff, Send } from 'lucide-react';
 
-const socket = io('http://localhost:1000');
 
 const Meeting = () => {
   const videoRef = useRef(null);
+const socket=null;
+  const partVideoRef = useRef(new Map());
+
   const [device, setDevice] = useState(null);
   const [isDeviceReady, setIsDeviceReady] = useState(false);
-  const [room, setRoom] = useState('');
+  const [producerTransport, setProducerTransport] = useState(null);
+  const [producer, setProducer] = useState(null);
+  const [consumerTransport, setConsumerTransport] = useState([]);
+  const [videoProducer, setVideoProducer] = useState(null);
+  const [audioProducer, setAudioProducer] = useState(null);
+  const [consumers, setConsumers] = useState(new Map());
+  const [rtpCapabilities, setRtpCapabilities] = useState(null);
+  const [dtls, setDtls] = useState(null);
 
-  const generateRoomID = (length = 8) => {
-    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    return Array.from({ length }, () => characters[Math.floor(Math.random() * characters.length)]).join('');
-  };
+  const [params2, setParams2] = useState({
+    encodings   :
+    [
+      { maxBitrate: 100000 },
+      { maxBitrate: 300000 },
+      { maxBitrate: 900000 }
+    ],
+    codecOptions :
+    {
+      videoGoogleStartBitrate : 1000
+    } // Starting bitrate is also lowered
+  });
 
   useEffect(() => {
-    const initMediaSoupDevice = async () => {
-      try {
-        const generatedRoomID = generateRoomID(10);
-        setRoom(generatedRoomID);
-
-        socket.emit('create-room', generatedRoomID, async (response) => {
-          if (!response.success) {
-            console.error('Error creating room:', response.error);
-            return;
-          }
-
-          console.log('RTP Capabilities:', response.routerRtpCapabilities);
-
-          const mediasoupDevice = new Device();
-          await mediasoupDevice.load({ routerRtpCapabilities: response.routerRtpCapabilities });
-          setDevice(mediasoupDevice);
-          setIsDeviceReady(true);
-
-          console.log('MediaSoup device is ready');
-        });
-      } catch (error) {
-        console.error('Error initializing MediaSoup device:', error);
-      }
+    let mediaStream = null;
+    const constraints = {
+      video:true,
+      audio: true
     };
-
-    const createSendTransport = () => {
-      socket.emit('createWebRtcTransport', { sender: true }, ({ params, success, error }) => {
-        if (!success) {
-          console.error('Error creating transport:', error);
-          return;
-        }
-        
-        console.log('Transport params received:', params);
-    
-      });
-    };
-
     const captureMedia = async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
-        if (videoRef.current) videoRef.current.srcObject = stream;
-        console.log('Media stream captured:', stream);
+        mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+        if (videoRef.current) videoRef.current.srcObject = mediaStream;
+
+        const videoTrack = mediaStream.getVideoTracks()[0];
+        console.log("sending track ",videoTrack)
+        const audioTrack = mediaStream.getAudioTracks()[0];
+        setAudioProducer(audioTrack);
+        setVideoProducer(videoTrack);
+        console.log('Media stream captured.');
       } catch (error) {
         console.error('Error capturing media:', error);
       }
     };
 
-    initMediaSoupDevice();
     captureMedia();
-    createSendTransport();
+
+    const initMediaSoupDevice = async () => {
+      try {
+        const codecs = RTCRtpSender.getCapabilities('video').codecs;
+        console.log('Browser supported codecs:', codecs);
+    
+        socket.emit('joinRoom', 'asddfg', async (response) => {
+          const mediasoupDevice = new Device();
+          console.log("RTP Capabilities:", response.rtpCapabilities);
+
+          // Add error handling for device loading
+          try {
+            await mediasoupDevice.load({ routerRtpCapabilities: response.rtpCapabilities });
+            console.log("Device loaded:", mediasoupDevice.loaded);
+            console.log("Can produce video:", mediasoupDevice.canProduce('video'));
+            console.log("RTP Capabilities:", mediasoupDevice.rtpCapabilities);
+            
+            if (mediasoupDevice.loaded && mediasoupDevice.canProduce('video')) {
+              setRtpCapabilities(response);
+              setDevice(mediasoupDevice);
+              createSendTransport(mediasoupDevice);
+            } else {
+              console.error("Device not properly loaded or cannot produce video");
+            }
+          } catch (loadError) {
+            console.error('Error loading device:', loadError);
+          }
+        });
+      } catch (error) {
+        console.error('Error initializing MediaSoup device:', error);
+      }
+    };
+    initMediaSoupDevice();
+
   }, []);
+
+  // This effect runs when producerTransport or videoProducer changes
+  useEffect(() => {
+    if (producerTransport && videoProducer) {
+      console.log("yolo")
+      console.log(device)
+      connectSendTransport(); // Ensure this only runs when these states are set
+    }
+  }, [producerTransport,videoProducer,device]);
+
+  const createSendTransport = (device) => {
+    // see server's socket.on('createWebRtcTransport', sender?, ...)
+    // this is a call from Producer, so sender = true
+    socket.emit('createWebRtcTransport', { consumer: false }, ({ params }) => {
+      // The server sends back params needed 
+      // to create Send Transport on the client side
+      if (params.error) {
+        console.log(params.error)
+        return
+      }
+  
+      console.log(params)
+  
+      // creates a new WebRTC Transport to send media
+      // based on the server's producer transport params
+      // https://mediasoup.org/documentation/v3/mediasoup-client/api/#TransportOptions
+      const proTransport = device.createSendTransport(params)
+      setProducerTransport(proTransport)
+
+      // https://mediasoup.org/documentation/v3/communication-between-client-and-server/#producing-media
+      // this event is raised when a first call to transport.produce() is made
+      // see connectSendTransport() below
+      proTransport.on('connect', async ({ dtlsParameters }, callback, errback) => {
+        try {
+          // Signal local DTLS parameters to the server side transport
+          // see server's socket.on('transport-connect', ...)
+          console.log("i was called")
+          await socket.emit('transport-connect', {
+            dtlsParameters,
+          })
+          // Tell the transport that parameters were transmitted.
+          callback()
+  
+        } catch (error) {
+          errback(error)
+        }
+      })
+  
+      proTransport.on('produce', async (parameters, callback, errback) => {
+        console.log(parameters)
+  
+        try {
+          // tell the server to create a Producer
+          // with the following parameters and produce
+          // and expect back a server side producer id
+          // see server's socket.on('transport-produce', ...)
+          await socket.emit('transport-produce', {
+            kind: parameters.kind,
+            rtpParameters: parameters.rtpParameters,
+            appData: parameters.appData,
+          }, ({ id, producersExist }) => {
+            // Tell the transport that parameters were transmitted and provide it with the
+            // server side producer's id.
+            callback({ id })
+  
+            // if producers exist, then join room
+            if (producersExist) getProducers(device)
+          })
+        
+        } catch (error) {
+          errback(error)
+        }
+      })
+  
+    })
+  }
+  
+
+  const getProducers = (device) => {
+    console.log("getproducer device ",device)
+    socket.emit('getProducers', producerIds => {
+      console.log({producerIds})
+      // for each of the producer create a consumer
+      // producerIds.forEach(id => signalNewConsumerTransport(id))
+      producerIds.forEach((producerId) => {
+        signalNewConsumerTransport({ remoteProducerId: producerId }, device);
+      });
+          })
+  }
+
+  const connectSendTransport = async () => {
+    if (!producerTransport ) {
+      console.log('Transport or video producer not ready.');
+      return;
+    }
+if (!device.canProduce('video')) {
+  console.error('Send transport cannot produce video');
+  return;
+}
+    try {
+      console.log(params2)
+      console.log("producerTransport ",producerTransport)
+      const newProducer = await producerTransport.produce(
+        {track:videoProducer
+       ,
+      encodings:[
+        { maxBitrate:  96000, scaleResolutionDownBy: 4 },
+        { maxBitrate: 680000, scaleResolutionDownBy: 1 },
+      ],
+      appData: { mediaTag: 'cam-video' }
+
+      });
+      setProducer(newProducer);
+      console.log("Producer ",newProducer)
+      newProducer.on('trackended', () => console.log('Track ended.'));
+      newProducer.on('transportclose', () => console.log('Transport closed.'));
+    } catch (error) {
+      console.error('Error connecting send transport:', error);
+    }
+  };
+ 
+  const signalNewConsumerTransport = async ({remoteProducerId},device) => {
+    //check if we are already consuming the remoteProducerId
+    if (consumerTransport.includes(remoteProducerId)) return;
+    consumerTransport.push(remoteProducerId);
+    console.log(`id ${remoteProducerId}`)
+
+    await socket.emit('createWebRtcTransport', { consumer: true }, ({ params }) => {
+      // The server sends back params needed 
+      // to create Send Transport on the client side
+      if (params.error) {
+        console.log(params.error)
+        return
+      }
+      console.log(`PARAMS... ${params}`)
+  
+      let consumerTrans
+      
+        console.log("device ",device)
+        consumerTrans = device.createRecvTransport(params)
+      
+  
+      consumerTrans.on('connect', async ({ dtlsParameters }, callback, errback) => {
+        try {
+          // Signal local DTLS parameters to the server side transport
+          // see server's socket.on('transport-recv-connect', ...)
+          await socket.emit('transport-recv-connect', {
+            dtlsParameters,
+            serverConsumerTransportId: params.id,
+          })
+  
+          // Tell the transport that parameters were transmitted.
+          callback()
+        } catch (error) {
+          // Tell the transport that something was wrong
+          errback(error)
+        }
+      })
+  
+      connectRecvTransport(consumerTrans, remoteProducerId, params.id,device)
+    })
+  }
+
+
+  const connectRecvTransport = async (consumerTrans, remoteProducerId, serverConsumerTransportId,device) => {
+    // for consumer, we need to tell the server first
+    // to create a consumer based on the rtpCapabilities and consume
+    // if the router can consume, it will send back a set of params as below
+    await socket.emit('consume', {
+      rtpCapabilities: device.rtpCapabilities,
+      remoteProducerId,
+      serverConsumerTransportId,
+    }, async ({ params }) => {
+      if (params.error) {
+        console.log('Cannot Consume')
+        return
+      }
+  
+      console.log(`Consumer Params ${{params}}`)
+      // then consume with the local consumer transport
+      // which creates a consumer
+      try{
+      let consumer = await consumerTrans.consume({
+        id: params.id,
+        producerId: params.producerId,
+        kind: params.kind,
+        rtpParameters: params.rtpParameters
+      })
+      
+
+      //emit consumer-resume
+      await new Promise((resolve, reject) => {
+        socket.emit('consumer-resume', 
+          { serverConsumerId: params.serverConsumerId }, 
+          (resumeResponse) => {
+            if (resumeResponse?.error) {
+              reject(resumeResponse.error);
+              return;
+            }
+            resolve("consumer-resume resolved");
+          }
+        );
+      });
+
+  
+      // destructure and retrieve the video track from the producer
+      let { track } = consumer
+  console.log("track ",track)
+  console.log("consumer ",{consumer})
+  if(track.readyState!="live"){
+    console.warn("The track isnt live")
+  }
+  const stream =new MediaStream([track])
+  addParticipant(stream)
+  setConsumerTransport((prev) => [
+    ...prev,
+    {
+      serverConsumerTransportId: params.id,
+      producerId: remoteProducerId,
+      consumer,
+    },
+  ]);
+
+     }
+     catch(error){
+      console.log("Error occured")
+     }
+     // the server consumer started with media paused
+      // so we need to inform the server to resume
+    })
+  }
+  
+ 
 
 
   const [participants, setParticipants] = useState([
     { id: 1, name: 'You', isMuted: false, isCameraOff: false }
   ]);
+  useEffect(() => {
+    console.log("Participants after:", participants);
+  }, [participants]);
   
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [messages, setMessages] = useState([
@@ -83,15 +342,16 @@ const Meeting = () => {
   ]);
   const [newMessage, setNewMessage] = useState('');
   
-  const addParticipant = () => {
+  const addParticipant = (stream) => {
     if (participants.length < 6) {
-      setParticipants([
-        ...participants,
+      setParticipants(prev => [
+        ...prev,
         { 
-          id: participants.length + 1, 
-          name: `User ${participants.length + 1}`,
+          id: Date.now(),
+          name: `User ${prev.length + 1}`,
           isMuted: false,
-          isCameraOff: false
+          isCameraOff: false,
+          stream: stream
         }
       ]);
     }
@@ -140,36 +400,63 @@ const Meeting = () => {
     return 'grid-cols-3';
   };
 
+  const handleParticipantVideo = (participant, node) => {
+    if (node) {
+      console.log(`Handling video for participant ${participant.id}`);
+      partVideoRef.current.set(participant.id, node);
+      
+      if (participant.stream) {
+        node.srcObject = participant.stream;
+        
+        // Handle play promise to catch autoplay issues
+        node.play().catch(error => {
+          console.error('Video play failed:', error);
+          // Show play button to user if needed
+        });
+      }
+    } else {
+      partVideoRef.current.delete(participant.id);
+    }
+  };
+  
+
   return (
     <div className="h-screen bg-gray-900 p-4">
       <div className="relative h-full flex flex-col">
         {/* Video Grid */}
         <div className={`grid ${getGridClass()} gap-4 flex-grow ${isChatOpen ? 'mr-80' : ''}`}>
-          {participants.map((participant) => (
-            <div key={participant.id} className="relative bg-gray-800 rounded-lg overflow-hidden">
-              {participant.isCameraOff ? (
-                <div className="h-full flex items-center justify-center">
-                  <div className="w-20 h-20 rounded-full bg-gray-600 flex items-center justify-center">
-                    <span className="text-2xl text-white">{participant.name[0]}</span>
-                  </div>
-                </div>
-              ) : (
-                <video 
-                  src="/api/placeholder/640/360" 
-                  alt={participant.name}
-                  autoPlay
-                  playsInline
-                  className="w-full h-full object-cover"
-                  
-                  {...(participant.id === 1 ? { ref: videoRef } : {})}
+        {participants.map((participant) => (
+  <div key={participant.id} className="relative bg-gray-800 rounded-lg overflow-hidden">
+    {participant.isCameraOff ? (
+      <div className="h-full flex items-center justify-center">
+        <div className="w-20 h-20 rounded-full bg-gray-600 flex items-center justify-center">
+          <span className="text-2xl text-white">{participant.name[0]}</span>
+        </div>
+      </div>
+    ) : participant?.id !== 1 ? (
+<video
+          ref={(node)=>{
+            handleParticipantVideo(participant,node)
+          }}
+          autoPlay muted
+          playsInline
+          className="w-full h-full object-cover"
+      />    ) : (
+      <video
+        src="/api/placeholder/640/360"
+        alt={participant.name}
+        autoPlay
+        playsInline
+        className="w-full h-full object-cover"
+        ref={videoRef}
+      />
+    )}
+    <div className="absolute bottom-4 left-4 text-white bg-black bg-opacity-50 px-2 py-1 rounded">
+      {participant.name} {participant.isMuted && <MicOff className="inline w-4 h-4 ml-1" />}
+    </div>
+  </div>
+))}
 
-                />
-              )}
-              <div className="absolute bottom-4 left-4 text-white bg-black bg-opacity-50 px-2 py-1 rounded">
-                {participant.name} {participant.isMuted && <MicOff className="inline w-4 h-4 ml-1" />}
-              </div>
-            </div>
-          ))}
         </div>
 
         {/* Control Bar */}

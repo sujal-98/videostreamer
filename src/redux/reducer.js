@@ -3,7 +3,7 @@
 const initialState = {
   user: {
     displayName:"",
-    email:"",
+    email:"abc",
     photo:""
   },
   isAuthenticated: false,
@@ -20,7 +20,6 @@ const authReducer = (state = initialState, action) => {
     case 'LOGOUT_USER':
       return {
         ...state,
-        user: null,
         isAuthenticated: false,
       };
     default:
