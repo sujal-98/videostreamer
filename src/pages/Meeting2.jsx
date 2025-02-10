@@ -51,7 +51,7 @@ const handleVideo=useCallback(async ()=>{
     video: true,
     audio: true
   }) 
-  const offer=peers.getOffer();
+  const offer=await peers.getOffer();
   socket.emit('user-call',{remoteSocketId,offer})
   setMyStream(stream)
 }, [remoteSocketId,socket])
@@ -73,19 +73,21 @@ const handleIncomingCall = useCallback(
 
 const sendStreams = useCallback(() => {
   for (const track of myStream.getTracks()) {
+    console.log("track ", track)
     peers.peer.addTrack(track, myStream);
   }
 }, [myStream]);
 
 
 const handleCallAccepted = useCallback(
-  ({ from, ans }) => {
-    peers.setLocalDescription(ans);
+  async ({ from, ans }) => {
+    // await peers.setRemote(ans);
     console.log("Call Accepted!");
     sendStreams();
   },
   [sendStreams]
 );
+
 const handleNegoNeeded = useCallback(async () => {
   const offer = await peers.getOffer();
   socket.emit("peer-nego-needed", { offer, to: remoteSocketId });

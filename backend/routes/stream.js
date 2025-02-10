@@ -49,11 +49,13 @@ const mapEmail=new Map();
       }
     })
 
-    socket.on("user-call", ({ to, offer }) => {
-      io.to(to).emit("incoming-call", { from: socket.id, offer });
+    socket.on("user-call", ({ remoteSocketId, offer }) => {
+      console.log("user calling ", remoteSocketId, offer);
+      io.to(remoteSocketId).emit("incoming-call", { from: socket.id, offer });
     });
 
     socket.on("call-accepted", ({ to, ans }) => {
+      console.log("call accepted ",to,ans)
       io.to(to).emit("call-accepted", { from: socket.id, ans });
     });
   
