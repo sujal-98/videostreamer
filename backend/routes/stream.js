@@ -13,7 +13,7 @@ const setupSocket = (server) => {
   methods: ['GET', 'POST'],        
   credentials: true  
     },
-  });
+  }); 
 
 // mapping for socket to email and email to socket as well
 const mapSocket=new Map();
@@ -35,23 +35,23 @@ const mapEmail=new Map();
       })
     
     socket.on('otheroom-join',(data)=>{
-      const {userEmail,roomCode}=data
-      console.log("email ",userEmail, "room ",roomCode)
+      const {userEmail,roomCode,name}=data
+      console.log("email ",userEmail, "room ",roomCode, "name",name)
       if(!io.sockets.adapter.rooms.has(roomCode)){
         console.log("Room doesn't exists ")
         io.to(socket.id).emit("otherroom-join", { message: "invalid room" } ); 
       }
       else{
-        io.to(roomCode).emit('otheroom-join',{email:userEmail,id:socket.id}) // Notifying people in room about new person in meeting
+        io.to(roomCode).emit('otheroom-join',{email:userEmail,id:socket.id,name:name}) // Notifying people in room about new person in meeting
         io.to(socket.id).emit("otheroom-join", data); 
         socket.join(roomCode)
         console.log("done 2")
       }
     })
 
-    socket.on("user-call", ({ remoteSocketId, offer }) => {
-      console.log("user calling ", remoteSocketId, offer);
-      io.to(remoteSocketId).emit("incoming-call", { from: socket.id, offer });
+    socket.on("user-call", ({ remoteSocketId, offer,name }) => {
+      console.log("user calling ", remoteSocketId, offer,name);
+      io.to(remoteSocketId).emit("incoming-call", { from: socket.id, offer , name });
     });
 
     socket.on("call-accepted", ({ to, ans }) => {

@@ -14,6 +14,7 @@ console.log("lobby email ",user?.email)
   // Set a default email if userEmail is missing
   const userEmail = user?.email || 'guest@default.com';
   const isGuest = userEmail === 'guest@default.com'; // Flag to check if the user is a guest
+  const name=user?.displayName || 'Error';
 
   const startCamera = async () => {
     try {
@@ -73,6 +74,7 @@ console.log("lobby email ",user?.email)
 
     return () => {
       socket.off('room-join',handleJoinRoom);
+      socket.off('otheroom-join',handleJoinOtherRoom);
     };
   }, [socket,handleJoinRoom]);
 
@@ -85,7 +87,7 @@ console.log("lobby email ",user?.email)
   const startRoomMeeting = () => {
     if (!roomCode || roomCode==="" || isGuest) return;
     
-    socket.emit('otheroom-join', { userEmail, roomCode });
+    socket.emit('otheroom-join', { userEmail, roomCode,name});
   };
 
   return (

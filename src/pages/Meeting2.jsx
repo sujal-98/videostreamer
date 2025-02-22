@@ -1,4 +1,4 @@
-import React, { useCallback, useState , useEffect } from 'react';
+import React, { useCallback, useState , useEffect, useRef } from 'react';
 import { 
   Box, 
   IconButton, 
@@ -25,9 +25,12 @@ import {
   Settings,
   Group
 } from '@mui/icons-material';
+
+import ForkRightIcon from '@mui/icons-material/ForkRight';
 import { useSocket } from '../contest/socketContext';
-import Peers from '../services/peers';
+import peer from "../services/peers";
 import ReactPlayer from "react-player";
+import { useSelector } from 'react-redux';
 
 const Meeting2 = () => {
   const socket=useSocket();
@@ -38,12 +41,15 @@ const Meeting2 = () => {
   const [showChat, setShowChat] = useState(false);
   const [myStream, setMyStream] = useState();
   const [remoteStream, setRemoteStream] = useState();
-const peers=new Peers();
+  const [participant,SetParticipant]=useState();
+  const {user} = useSelector((state) => state.auth);
+  const name=user?.displayName;
 
-//function
-const handleUserJoined = useCallback(({ email, id }) => {
+  //function
+const handleUserJoined = useCallback(({ email, id ,name }) => {
   console.log(`Email ${email} joined room ` , id);
   setRemoteSocketId(id);
+  SetParticipant(name)
 }, []);
 
 const handleVideo=useCallback(async ()=>{
@@ -51,8 +57,8 @@ const handleVideo=useCallback(async ()=>{
     video: true,
     audio: true
   }) 
-  const offer=await peers.getOffer();
-  socket.emit('user-call',{remoteSocketId,offer})
+  const offer=await peer.getOffer();
+  socket.emit('user-call',{remoteSocketId,offer,name})
   setMyStream(stream)
 }, [remoteSocketId,socket])
 
@@ -64,24 +70,28 @@ const handleIncomingCall = useCallback(
       video: true,
     });
     setMyStream(stream);
-    console.log(`Incoming Call`, from, offer);
-    const ans = await peers.getAnswer(offer);
+    console.log(`Incoming Call`, from, offer,name);
+    SetParticipant(name);
+    const ans = await peer.getAnswer(offer);
     socket.emit("call-accepted", { to: from, ans });
   },
   [socket]
 );
 
+
+
 const sendStreams = useCallback(() => {
   for (const track of myStream.getTracks()) {
     console.log("track ", track)
-    peers.peer.addTrack(track, myStream);
+    const sender =peer.peer.addTrack(track, myStream);
+    console.log(`Track added: ${track.kind}`, sender);
   }
 }, [myStream]);
 
 
 const handleCallAccepted = useCallback(
   async ({ from, ans }) => {
-    // await peers.setRemote(ans);
+    peer.setLocalDescription(ans);
     console.log("Call Accepted!");
     sendStreams();
   },
@@ -89,39 +99,21 @@ const handleCallAccepted = useCallback(
 );
 
 const handleNegoNeeded = useCallback(async () => {
-  const offer = await peers.getOffer();
+  const offer = await peer.getOffer();
   socket.emit("peer-nego-needed", { offer, to: remoteSocketId });
 }, [remoteSocketId, socket]);
 
 const handleNegoNeedIncomming = useCallback(
   async ({ from, offer }) => {
-    const ans = await peers.getAnswer(offer);
+    const ans = await peer.getAnswer(offer);
     socket.emit("peer-nego-done", { to: from, ans });
   },
   [socket]
 );
 
 const handleNegoNeedFinal = useCallback(async ({ ans }) => {
-  await peers.setLocalDescription(ans);
+  await peer.setLocalDescription(ans);
 }, []);
-
-useEffect(() => {
-  peers.peer.addEventListener("negotiationneeded", handleNegoNeeded);
-  return () => {
-    peers.peer.removeEventListener("negotiationneeded", handleNegoNeeded);
-  };
-}, [handleNegoNeeded]);
-
-useEffect(() => {
-  peers.peer.addEventListener("track", async (ev) => {
-    const remoteStream = ev.streams;
-    console.log("GOT TRACKS!!");
-    setIsSecondPersonJoined(true)
-    setRemoteStream(remoteStream[0]);
-  });
-}, []);
-
-
 
   useEffect(()=>{
     
@@ -148,7 +140,22 @@ useEffect(() => {
     handleNegoNeedIncomming,
     handleNegoNeedFinal,
   ])
+  useEffect(() => {
+    peer.peer.addEventListener("track", async (ev) => {
+      const remoteStream = ev.streams;
+      console.log("GOT TRACKS!!",remoteStream);
+      setIsSecondPersonJoined(true)
+      setRemoteStream(remoteStream[0]);
+    });
+  }, []);
+  useEffect(() => {
+    peer.peer.addEventListener("negotiationneeded", handleNegoNeeded);
+    return () => {
+      peer.peer.removeEventListener("negotiationneeded", handleNegoNeeded);
+    };
+  }, [handleNegoNeeded]);
 
+  
   return (
     <Box sx={{ height: '100vh', bgcolor: 'background.default' }}>
       <Container maxWidth={false} sx={{ height: '100%', py: 3, position: 'relative' }}>
@@ -169,8 +176,8 @@ useEffect(() => {
                  <ReactPlayer
             playing
             muted
-            height="100px"
-            width="200px"
+            height="100%"
+            width="100%"
             url={myStream}
           />
 
@@ -223,13 +230,14 @@ useEffect(() => {
                     bgcolor: 'background.paper'
                   }}
                 >
-                   <ReactPlayer
+                  <ReactPlayer
             playing
             muted
-            height="100px"
-            width="200px"
+            height="100%"
+            width="100%"
             url={remoteStream}
           />
+
                   <Paper
                     elevation={0}
                     sx={{
@@ -242,7 +250,7 @@ useEffect(() => {
                     }}
                   >
                     <Typography variant="body2" color="white">
-                      John Doe
+                      {participant}
                     </Typography>
                   </Paper>
                 </Paper>
@@ -286,6 +294,14 @@ useEffect(() => {
               >
                 <Call />
               </IconButton>
+              <IconButton
+                color="success"
+                sx={{ bgcolor: 'success.main', color: 'white', '&:hover': { bgcolor: 'success.dark' } }}
+                onClick={sendStreams}
+              >
+                <ForkRightIcon />
+                </IconButton>
+
             </Stack>
             <Box sx={{ flexGrow: 1 }} />
             <IconButton
