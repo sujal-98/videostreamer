@@ -12,6 +12,8 @@
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
     "axios": "^1.7.3",
+    "binaryjs": "^0.2.1",
+    "binaryjs-client": "^1.0.0",
     "connect-redis": "^7.1.1",
     "cookie-session": "^2.1.0",
     "cors": "^2.8.5",
@@ -43,6 +45,7 @@
     "simple-peer": "^9.11.1",
     "socket.io": "^4.7.5",
     "socket.io-client": "^4.7.5",
+    "ua-parser-js": "^2.0.2",
     "web-vitals": "^2.1.4"
   },
   "scripts": {

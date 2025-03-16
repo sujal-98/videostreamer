@@ -34,7 +34,7 @@ app.use(cors({
 // Set up static file serving
 app.use(express.static(path.join(__dirname, 'public')));  // Use `app.use`
 
-// Set up session management
+// Set up session management (need to rethink this!)
 app.use(session({
   store: new RedisStore({ client: redisClient }),
   secret: process.env.SESSION_SECRET,
