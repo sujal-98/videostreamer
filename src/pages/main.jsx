@@ -70,13 +70,6 @@ const Main = () => {
       route: '/meetinglobby',
     },
     {
-      title: 'Live Stream',
-      description: 'Broadcast your content live to thousands of viewers worldwide',
-      icon: <LiveTv sx={{ fontSize: 32 }} />,
-      color: '#2e7d32',
-      route: '/stream',
-    },
-    {
       title: 'File Transfer',
       description: 'Share files securely with end-to-end encryption & no size limits',
       icon: <FileCopy sx={{ fontSize: 32 }} />,

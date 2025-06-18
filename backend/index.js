@@ -52,7 +52,7 @@ app.use(bodyParser.json());
 app.use(express.json());
 
 // Route handling
-app.use('/auth', require('./routes/auth'));
+app.use('/api/auth', require('./routes/auth'));
 app.use('/videos', fetch);
 
 // DB Connection
@@ -63,6 +63,6 @@ mongoose.connect(process.env.uri).then(() => {
 });
 
 // Port setup
-server.listen(1000, () => {
-  console.log('Server listening on port 1000');
+server.listen(4000, () => {
+  console.log('Server listening on port 4000');
 });

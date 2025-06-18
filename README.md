@@ -1,70 +1,219 @@
-# Getting Started with Create React App
+# VideoStreamer: Modern Video Meeting, Watch Party & File Sharing Platform
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+![Node.js](https://img.shields.io/badge/Node.js-18.x-green?logo=node.js)
+![React](https://img.shields.io/badge/React-18.x-blue?logo=react)
+![MongoDB](https://img.shields.io/badge/MongoDB-6.x-brightgreen?logo=mongodb)
+![Socket.IO](https://img.shields.io/badge/Socket.IO-4.x-black?logo=socket.io)
 
-## Available Scripts
+---
 
-In the project directory, you can run:
+## 🚀 Overview
 
-### `npm start`
+**VideoStreamer** is a full-stack web application for real-time video meetings, collaborative YouTube watch parties, and secure file sharing. It features Google OAuth authentication, WebRTC-based video calls, live chat, and a modern, responsive UI.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+---
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## ✨ Features
 
-### `npm test`
+- **Google OAuth Login**
+- **Virtual Meetings** (WebRTC, video/audio, chat, screen share)
+- **Watch Party** (synchronized YouTube viewing)
+- **File Transfer** (peer-to-peer, chunked, secure)
+- **Live Chat** (in meetings)
+- **Responsive UI** (Material UI, Tailwind)
+- **User Profiles**
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+---
 
-### `npm run build`
+## 🏗️ Architecture
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### System Flow
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+```mermaid
+flowchart TD
+  A[User] -->|Login with Google| B(Frontend /login.jsx)
+  B -->|Redirect| C[http://localhost:4000/api/auth/google]
+  C -->|OAuth Flow| D[Backend /api/auth/google]
+  D -->|Google OAuth| E[Google Servers]
+  E -->|Callback| F[Backend /api/auth/google/callback]
+  F -->|Set Session, Redirect| G[Frontend]
+  A -.->|WebRTC, File, Chat| H[Socket.IO Server]
+  H -->|Video/Audio| I[Other User]
+  A -->|UI| J[Main Page]
+  J -->|Navigate| K[Meeting, WatchParty, FileShare]
+  subgraph Backend
+    D
+    F
+    H
+  end
+  subgraph Frontend
+    B
+    G
+    J
+    K
+  end
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### Entity Relationship
 
-### `npm run eject`
+```mermaid
+erDiagram
+  USER ||--o{ MEETING : participates
+  USER ||--o{ WATCHPARTY : joins
+  USER ||--o{ FILETRANSFER : sends
+  USER ||--o{ FILETRANSFER : receives
+  MEETING ||--o{ CHAT : has
+  MEETING ||--o{ STREAM : has
+  USER {
+    string googleId
+    string displayName
+    string email
+    string photo
+  }
+  MEETING {
+    string roomId
+    string hostId
+    string[] participantIds
+  }
+  WATCHPARTY {
+    string partyId
+    string hostId
+    string[] memberIds
+    string videoUrl
+  }
+  FILETRANSFER {
+    string transferId
+    string senderId
+    string receiverId
+    string fileName
+    int fileSize
+  }
+  CHAT {
+    string messageId
+    string senderId
+    string text
+    date sentAt
+  }
+  STREAM {
+    string streamId
+    string meetingId
+    string type
+  }
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+### Component/Service Overview
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+```mermaid
+flowchart LR
+  subgraph Frontend
+    A[Login Page]
+    B[Main Page]
+    C[Meeting Page]
+    D[Watch Party Page]
+    E[File Share Page]
+    F[Chat Panel]
+  end
+  subgraph Backend
+    G[Express API]
+    H[Auth Route]
+    I[Stream Route]
+    J[Socket.IO Server]
+    K[MongoDB]
+  end
+  A-->|Google OAuth|H
+  B-->|API Calls|G
+  C-->|WebRTC/Socket|J
+  D-->|Socket|J
+  E-->|Socket|J
+  F-->|Socket|J
+  G-->|DB|K
+  H-->|DB|K
+  I-->|Socket|J
+  J-->|DB|K
+```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+---
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+## 🛠️ Setup & Installation
 
-## Learn More
+### Prerequisites
+- Node.js 18+
+- MongoDB 6+
+- Redis (for session store)
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+### 1. Clone the repository
+```bash
+git clone <repo-url>
+cd videostreamer/streamer
+```
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+### 2. Install dependencies
+```bash
+npm install
+cd backend && npm install
+```
 
-### Code Splitting
+### 3. Environment Variables
+Create a `.env` file in `backend/`:
+```
+SESSION_SECRET=your_session_secret
+uri=mongodb://localhost:27017/yourdbname
+googleId=your_google_client_id
+googleSecret=your_google_client_secret
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+### 4. Start the servers
+- **Backend:**
+  ```bash
+  cd backend
+  node index.js
+  ```
+- **Frontend:**
+  ```bash
+  cd ..
+  npm start
+  ```
 
-### Analyzing the Bundle Size
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+## 🧑‍💻 Usage
+- Visit [http://localhost:3000](http://localhost:3000)
+- Login with Google
+- Start or join a meeting, watch party, or file share
 
-### Making a Progressive Web App
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+## 📚 API & Socket Endpoints
 
-### Advanced Configuration
+### Auth API
+- `GET /api/auth/google` — Start Google OAuth
+- `GET /api/auth/google/callback` — OAuth callback
+- `GET /api/auth/logout` — Logout
+- `GET /api/auth/current_user` — Get current user
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+### Socket Events
+- `room-join`, `otheroom-join` — Join rooms
+- `user-call`, `incoming-call`, `call-accepted` — WebRTC signaling
+- `chat-message` — Send/receive chat
+- `call-ended` — End call
+- `send-chunk`, `receive-chunk` — File transfer
 
-### Deployment
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+## 🖥️ Main Pages
+- `/` — Main landing page
+- `/login` — Google login
+- `/meetinglobby` — Meeting lobby
+- `/meeting` — Video meeting
+- `/watchparty` — Watch party
+- `/fileshare` — File sharing
 
-### `npm run build` fails to minify
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+## 🤝 Contributing
+Pull requests welcome! For major changes, open an issue first to discuss what you would like to change.
+
+---
+
+## 📄 License
+[MIT](LICENSE)

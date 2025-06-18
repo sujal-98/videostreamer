@@ -8,7 +8,7 @@ function App({ user, isAuthenticated, setCurrentUser, logout }) {
   }, [setCurrentUser]);
 
   const handleLogin = () => {
-    window.location.href = 'http://localhost:1000/auth/google';
+    window.location.href = 'http://localhost:4000/api/auth/google';
   };
 
   const handleLogout = () => {

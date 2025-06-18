@@ -3,7 +3,7 @@ axios.defaults.withCredentials = true;
 
 export const setCurrentUser = () => dispatch => {
   axios
-    .get("http://localhost:1000/auth/current_user")
+    .get("http://localhost:4000/api/auth/current_user")
     .then(res => {
       console.log(res.data);
       dispatch({
@@ -17,7 +17,7 @@ export const setCurrentUser = () => dispatch => {
 };
 export const logout = () => dispatch => {
   axios
-    .get('http://localhost:1000/auth/logout')
+    .get('http://localhost:4000/api/auth/logout')
     .then(() => {
       dispatch({
         type: 'LOGOUT_USER',

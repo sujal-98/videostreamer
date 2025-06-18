@@ -19,7 +19,7 @@ passport.deserializeUser(async (id, done) => {
 passport.use(new GoogleStrategy({
   clientID: process.env.googleId,
   clientSecret: process.env.googleSecret,
-  callbackURL: 'http://localhost:1000/auth/google/callback'
+  callbackURL: 'http://localhost:4000/api/auth/google/callback'
 }, (accessToken, refreshToken, profile, done) => {
   User.findOne({ googleId: profile.id }).then(existingUser => {
     if (existingUser) {

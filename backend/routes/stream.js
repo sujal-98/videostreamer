@@ -16,7 +16,7 @@ const setupSocket = (server) => {
     },
   }); 
 
-   const generateUUID = () =>{
+   const generateUUID = () => {
          return [2, 1, 1, 1, 3].map(s4 => Math.random().toString(16).slice(2, 2 + s4)).join('-');
   }
 
@@ -102,7 +102,28 @@ const mapEmail=new Map();
       io.to(to).emit("peer-nego-final", { from: socket.id, ans });
     });
 
+    // Handle chat messages
+    socket.on("chat-message", ({ message, to }) => {
+      console.log("Chat message from", socket.id, "to", to, ":", message);
+      io.to(to).emit("chat-message", { message });
+    });
 
+    // Handle call end event
+    socket.on("call-ended", ({ to }) => {
+      console.log("Call ended by", socket.id);
+      io.to(to).emit("call-ended");
+    });
+
+    // Handle disconnection
+    socket.on("disconnect", () => {
+      console.log("User disconnected:", socket.id);
+      // Clean up any active calls or resources
+      const userEmail = mapSocket.get(socket.id);
+      if (userEmail) {
+        mapSocket.delete(socket.id);
+        mapEmail.delete(userEmail);
+      }
+    });
 
     const fileChunks = new Map();
 

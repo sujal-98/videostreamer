@@ -10,6 +10,7 @@ import Lobby from './pages/Lobby';
 import Meeting from './pages/Meeting';
 import FileShare from './pages/fileShare';
 import Meeting2 from './pages/Meeting2';
+import YouTubeWatchParty from './pages/watchParty';
 import { SocketProvider } from './contest/socketContext';
 
 function App() {
@@ -28,6 +29,7 @@ function App() {
 } />
           <Route path="/meeting/:id" element={  <Meeting2 />  
  } />
+ <Route path="/watchparty" element={ <YouTubeWatchParty /> } />
           <Route path="/fileShare" element={ <FileShare /> } />
 
         </Routes>
